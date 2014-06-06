@@ -6,12 +6,9 @@
             [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
             [metrics.timers :refer (time! timer)]
             [uswitch.bifrost.core :refer (out-chan Producer)]
-            [uswitch.bifrost.async :refer (observable-chan)])
-  (:import [java.text SimpleDateFormat]))
+            [uswitch.bifrost.async :refer (observable-chan)]))
 
 (def buffer-size 50)
-
-(def key-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn generate-key [consumer-group-id topic partition first-offset]
   (format "%s/%s/partition=%s/%s.baldr.gz"
