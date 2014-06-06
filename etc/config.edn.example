@@ -1,0 +1,13 @@
+{:consumer-properties {"zookeeper.connect"  "localhost:2181"
+                       "group.id"           "bifrost"
+                       "auto.offset.reset"  "smallest" ; we explicitly commit offsets once files have
+                                                       ; been uploaded to s3 so no need for auto commit
+                       "auto.commit.enable" "false"}
+ :topic-blacklist     #{"sometopic"}
+ :topic-whitelist     nil
+ :rotation-interval   60000 ; milliseconds
+ :credentials         {:access-key ""
+                       :secret-key ""
+                       :endpoint "s3-eu-west-1.amazonaws.com"}
+ :bucket              "my-bifrost-bucket"
+ :riemann-host        "localhost"}
