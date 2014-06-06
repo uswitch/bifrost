@@ -1,6 +1,6 @@
 (ns uswitch.bifrost.kafka
   (:require [clj-kafka.zk :refer (topics)]
-            [com.stuartsierra.component :refer (Lifecycle start stop)]
+            [com.stuartsierra.component :refer (Lifecycle start stop system-map using)]
             [clojure.java.io :refer (file output-stream)]
             [clojure.core.async :refer (chan <! >! go-loop timeout alts! close! put!)]
             [clojure.set :refer (difference intersection)]
@@ -8,7 +8,6 @@
             [clojure.tools.logging :refer (info debug error)]
             [baldr.core :refer (baldr-writer)]
             [uswitch.bifrost.util :refer (close-channels)]
-            ;; TODO: Remove obser
             [uswitch.bifrost.async :refer (observable-chan)]
             [metrics.meters :refer (meter mark! defmeter)])
   (:import [java.util.zip GZIPOutputStream]))
@@ -185,3 +184,11 @@
   [config]
   (map->ConsumerSpawner
    (select-keys config [:consumer-properties :rotation-interval :topic-blacklist :topic-whitelist])))
+
+(defn kafka-system
+  [config]
+  (system-map :topic-added-ch (observable-chan "topic-added-ch" buffer-size)
+              :topic-listener (using (topic-listener config)
+                                     [:topic-added-ch])
+              :consumer-spawner (using (consumer-spawner config)
+                                       [:topic-added-ch :rotated-event-ch])))
