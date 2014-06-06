@@ -5,7 +5,7 @@
             [clojure.java.io :refer (file)]
             [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
             [metrics.timers :refer (time! timer)]
-            [uswitch.bifrost.core :refer (out-chan Producer)]
+            [uswitch.bifrost.util :refer (close-channels)]
             [uswitch.bifrost.async :refer (observable-chan)]))
 
 (def buffer-size 50)
@@ -28,9 +28,7 @@
         (info "Finished uploading" dest-url))
       (warn "Unable to find file" file-path))))
 
-(defrecord S3Upload [credentials bucket consumer-properties rotated-event-ch]
-  Producer
-  (out-chan [this] (:commit-offset-ch this))
+(defrecord S3Upload [credentials bucket consumer-properties rotated-event-ch commit-offset-ch]
   Lifecycle
   (start [this]
     (info "Starting S3Upload component.")
@@ -38,8 +36,7 @@
       (info "Creating" bucket "bucket")
       (create-bucket credentials bucket))
 
-    (let [delete-local-file-ch (observable-chan "delete-local-file-ch" buffer-size)
-          commit-offset-ch     (observable-chan "commit-offset-ch" buffer-size)]
+    (let [delete-local-file-ch (observable-chan "delete-local-file-ch" buffer-size)]
       (go-loop [msg (<! delete-local-file-ch)]
         (when msg
           (let [{:keys [file-path]} msg]
@@ -63,16 +60,9 @@
                    (recur (<! rotated-event-ch)))))
       (info "Started S3Upload. Waiting for rotation events.")
       (assoc this
-        :delete-local-file-ch delete-local-file-ch
-        :commit-offset-ch     commit-offset-ch)))
+        :delete-local-file-ch delete-local-file-ch)))
   (stop [this]
-    (when-let [ch (:delete-local-file-ch this)]
-      (close! ch))
-    (when-let [ch (:commit-offset-ch this)]
-      (close! ch))
-    (dissoc this
-            :delete-local-file-ch
-            :commit-offset-ch)))
+    (close-channels this :delete-local-file-ch)))
 
 (defn s3-upload [config]
   (map->S3Upload (select-keys config [:credentials :bucket :consumer-properties])))

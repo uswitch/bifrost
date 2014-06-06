@@ -10,7 +10,6 @@
             [uswitch.bifrost.util :refer (close-channels)]
             ;; TODO: Remove obser
             [uswitch.bifrost.async :refer (observable-chan)]
-            [uswitch.bifrost.core :refer (Producer out-chan)]
             [metrics.meters :refer (meter mark! defmeter)])
   (:import [java.util.zip GZIPOutputStream]))
 

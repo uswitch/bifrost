@@ -1,16 +1,14 @@
 (ns uswitch.bifrost.zk
   (:require [clj-kafka.zk :refer (committed-offset set-offset!)]
             [com.stuartsierra.component :refer (Lifecycle)]
-            [uswitch.bifrost.core :refer (out-chan)]
             [clojure.core.async :refer (go-loop <!)]
             [clojure.tools.logging :refer (info error)]))
 
-(defrecord ZookeeperTracker [consumer-properties channable]
+(defrecord ZookeeperTracker [consumer-properties commit-offset-ch]
   Lifecycle
   (start [this]
     (info "Starting ZookeeperTracker")
-    (let [commit-offset-ch  (out-chan channable)
-          consumer-group-id (consumer-properties "group.id")]
+    (let [consumer-group-id (consumer-properties "group.id")]
       (go-loop [{:keys [topic partition offset] :as m} (<! commit-offset-ch)]
         (when m
           (info "Committing consumer information to ZooKeeper:" m)
