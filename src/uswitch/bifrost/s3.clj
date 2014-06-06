@@ -28,7 +28,7 @@
         (info "Finished uploading" dest-url))
       (warn "Unable to find file" file-path))))
 
-(defrecord S3Upload [credentials bucket consumer-properties
+(defrecord S3Upload [credentials bucket consumer-properties uploaders-n
                      rotated-event-ch commit-offset-ch delete-local-file-ch]
   Lifecycle
   (start [this]
@@ -37,7 +37,7 @@
       (info "Creating" bucket "bucket")
       (create-bucket credentials bucket))
 
-    (doseq [i (range 4)]
+    (doseq [i (range uploaders-n)]
       (go-loop [msg (<! rotated-event-ch)]
                (when msg
                  (let [{:keys [topic partition file-path first-offset last-offset]} msg
@@ -50,12 +50,13 @@
                         (catch Exception e
                           ;; depending on the error we'll need to retry!!
                           (error e "Error whilst uploading to S3"))))
-                 (recur (<! rotated-event-ch))))))
+                 (recur (<! rotated-event-ch)))))
+    this)
   (stop [this]
     this))
 
 (defn s3-upload [config]
-  (map->S3Upload (select-keys config [:credentials :bucket :consumer-properties])))
+  (map->S3Upload (select-keys config [:credentials :bucket :consumer-properties :uploaders-n])))
 
 (defrecord Deleter [delete-local-file-ch]
   Lifecycle

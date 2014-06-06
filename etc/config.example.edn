@@ -11,6 +11,7 @@
  :credentials         {:access-key ""
                        :secret-key ""
                        :endpoint "s3-eu-west-1.amazonaws.com"}
+ :uploaders-n         4 ; max-number of concurrent threads uploading to S3
  :bucket              "my-bifrost-bucket"
  :riemann-host        nil ; if :riemann-host is set, metrics will be pushed to that host
  }
