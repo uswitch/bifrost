@@ -1,5 +1,5 @@
 (ns uswitch.bifrost.s3
-  (:require [com.stuartsierra.component :refer (Lifecycle)]
+  (:require [com.stuartsierra.component :refer (Lifecycle system-map using)]
             [clojure.tools.logging :refer (info warn error)]
             [clojure.core.async :refer (<! go-loop chan close!)]
             [clojure.java.io :refer (file)]
@@ -28,7 +28,8 @@
         (info "Finished uploading" dest-url))
       (warn "Unable to find file" file-path))))
 
-(defrecord S3Upload [credentials bucket consumer-properties rotated-event-ch commit-offset-ch]
+(defrecord S3Upload [credentials bucket consumer-properties
+                     rotated-event-ch commit-offset-ch delete-local-file-ch]
   Lifecycle
   (start [this]
     (info "Starting S3Upload component.")
@@ -36,33 +37,46 @@
       (info "Creating" bucket "bucket")
       (create-bucket credentials bucket))
 
-    (let [delete-local-file-ch (observable-chan "delete-local-file-ch" buffer-size)]
-      (go-loop [msg (<! delete-local-file-ch)]
-        (when msg
-          (let [{:keys [file-path]} msg]
-            (info "Deleting file" file-path)
-            (if (.delete (file file-path))
-              (info "Deleted" file-path)))
-          (recur (<! delete-local-file-ch))))
-      (doseq [i (range 4)]
-        (go-loop [msg (<! rotated-event-ch)]
-                 (when msg
-                   (let [{:keys [topic partition file-path first-offset last-offset]} msg
-                         consumer-group-id (consumer-properties "group.id")]
-                     (try (upload-to-s3 credentials bucket consumer-group-id topic partition first-offset file-path)
-                          (>! delete-local-file-ch {:file-path file-path})
-                          (>! commit-offset-ch {:topic     topic
-                                                :partition partition
-                                                :offset    last-offset})
-                          (catch Exception e
-                            ;; depending on the error we'll need to retry!!
-                            (error e "Error whilst uploading to S3"))))
-                   (recur (<! rotated-event-ch)))))
-      (info "Started S3Upload. Waiting for rotation events.")
-      (assoc this
-        :delete-local-file-ch delete-local-file-ch)))
+    (doseq [i (range 4)]
+      (go-loop [msg (<! rotated-event-ch)]
+               (when msg
+                 (let [{:keys [topic partition file-path first-offset last-offset]} msg
+                       consumer-group-id (consumer-properties "group.id")]
+                   (try (upload-to-s3 credentials bucket consumer-group-id topic partition first-offset file-path)
+                        (>! delete-local-file-ch {:file-path file-path})
+                        (>! commit-offset-ch {:topic     topic
+                                              :partition partition
+                                              :offset    last-offset})
+                        (catch Exception e
+                          ;; depending on the error we'll need to retry!!
+                          (error e "Error whilst uploading to S3"))))
+                 (recur (<! rotated-event-ch))))))
   (stop [this]
-    (close-channels this :delete-local-file-ch)))
+    this))
 
 (defn s3-upload [config]
   (map->S3Upload (select-keys config [:credentials :bucket :consumer-properties])))
+
+(defrecord Deleter [delete-local-file-ch]
+  Lifecycle
+  (start [this]
+    (info "Starting deleter")
+    (go-loop [msg (<! delete-local-file-ch)]
+             (when msg
+               (let [{:keys [file-path]} msg]
+                 (info "Deleting file" file-path)
+                 (if (.delete (file file-path))
+                   (info "Deleted" file-path)))
+               (recur (<! delete-local-file-ch)))))
+  (stop [this]
+    this))
+
+(defn deleter []
+  (map->Deleter {}))
+
+(defn s3-system [config]
+  (system-map :delete-local-file-ch (observable-chan "delete-local-file-ch" buffer-size)
+              :uploader (using (s3-upload config)
+                               [:rotated-event-ch :commit-offset-ch :delete-local-file-ch])
+              :deleter (using (deleter)
+                              [:delete-local-file-ch])))

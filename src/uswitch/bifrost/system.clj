@@ -5,7 +5,7 @@
             [uswitch.bifrost.async :refer (observable-chan)]
             [uswitch.bifrost.telemetry :refer (metrics-reporter)]
             [uswitch.bifrost.kafka :refer (topic-listener consumer-spawner)]
-            [uswitch.bifrost.s3 :refer (s3-upload)]
+            [uswitch.bifrost.s3 :refer (s3-system)]
             [uswitch.bifrost.zk :refer (zookeeper-tracker)])
   (:import [clojure.core.async.impl.channels ManyToManyChannel]))
 
@@ -30,7 +30,7 @@
                           [:topic-added-ch])
    :consumer-spawner (using (consumer-spawner config)
                             [:topic-added-ch :rotated-event-ch])
-   :s3-uploader (using (s3-upload config)
-                       [:rotated-event-ch :commit-offset-ch])
+   :s3-system (using (s3-system config)
+                     [:rotated-event-ch :commit-offset-ch])
    :zookeeper-tracker (using (zookeeper-tracker config)
                              [:commit-offset-ch])))
