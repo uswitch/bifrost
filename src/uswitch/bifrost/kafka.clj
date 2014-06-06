@@ -159,33 +159,28 @@
                 topics)
               topic-blacklist))
 
-(defrecord ConsumerSpawner [consumer-properties rotation-interval topic-blacklist topic-whitelist topic-added-ch]
-  Producer
-  (out-chan [this]
-    (:out-ch this))
+(defrecord ConsumerSpawner [consumer-properties rotation-interval topic-blacklist topic-whitelist
+                            topic-added-ch rotated-event-ch]
   Lifecycle
   (start [this]
     (info "Starting ConsumerSpawner")
-    (let [rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
-          consumers        (atom [])]
+    (let [consumers        (atom [])]
       (go-loop []
         (if-let [new-topics (<! topic-added-ch)]
           (do (doseq [topic (listen-topics topic-blacklist topic-whitelist new-topics)]
                 (info "Spawning consumer for" topic)
                 (swap! consumers conj (spawn-topic-baldr-consumer consumer-properties topic rotation-interval rotated-event-ch)))
               (recur))
-          (do
-            (info "Closing down ConsumerSpawner")
-            (close! rotated-event-ch))))
+          (info "Closing down ConsumerSpawner")))
       (info "ConsumerSpawner started")
-      (assoc this :out-ch rotated-event-ch :consumers consumers)))
+      (assoc this :consumers consumers)))
   (stop [this]
     (when-let [consumers (:consumers this)]
       (doseq [consumer @consumers]
         (info "Stopping consumer" consumer)
         (stop consumer)))
     (info "Finished shutting down consumers")
-    (dissoc this :out-ch :consumers)))
+    (dissoc this :consumers)))
 
 (defn consumer-spawner
   [config]

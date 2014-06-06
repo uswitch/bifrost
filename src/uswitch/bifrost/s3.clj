@@ -28,7 +28,7 @@
         (info "Finished uploading" dest-url))
       (warn "Unable to find file" file-path))))
 
-(defrecord S3Upload [credentials bucket channable consumer-properties]
+(defrecord S3Upload [credentials bucket consumer-properties rotated-event-ch]
   Producer
   (out-chan [this] (:commit-offset-ch this))
   Lifecycle
@@ -38,8 +38,7 @@
       (info "Creating" bucket "bucket")
       (create-bucket credentials bucket))
 
-    (let [s3-upload-ready-ch (out-chan channable)
-          delete-local-file-ch (observable-chan "delete-local-file-ch" buffer-size)
+    (let [delete-local-file-ch (observable-chan "delete-local-file-ch" buffer-size)
           commit-offset-ch     (observable-chan "commit-offset-ch" buffer-size)]
       (go-loop [msg (<! delete-local-file-ch)]
         (when msg
@@ -49,7 +48,7 @@
               (info "Deleted" file-path)))
           (recur (<! delete-local-file-ch))))
       (doseq [i (range 4)]
-        (go-loop [msg (<! s3-upload-ready-ch)]
+        (go-loop [msg (<! rotated-event-ch)]
                  (when msg
                    (let [{:keys [topic partition file-path first-offset last-offset]} msg
                          consumer-group-id (consumer-properties "group.id")]
@@ -61,7 +60,7 @@
                           (catch Exception e
                             ;; depending on the error we'll need to retry!!
                             (error e "Error whilst uploading to S3"))))
-                   (recur (<! s3-upload-ready-ch)))))
+                   (recur (<! rotated-event-ch)))))
       (info "Started S3Upload. Waiting for rotation events.")
       (assoc this
         :delete-local-file-ch delete-local-file-ch

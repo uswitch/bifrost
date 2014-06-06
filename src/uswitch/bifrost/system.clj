@@ -22,12 +22,15 @@
 (defn make-system [config]
   (system-map
    :metrics-reporter (metrics-reporter config)
+
    :topic-added-ch (observable-chan "topic-added-ch" buffer-size)
+   :rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
+
    :topic-listener (using (topic-listener config)
                           [:topic-added-ch])
    :consumer-spawner (using (consumer-spawner config)
-                            [:topic-added-ch])
+                            [:topic-added-ch :rotated-event-ch])
    :s3-uploader (using (s3-upload config)
-                       {:channable :consumer-spawner})
+                       [:rotated-event-ch])
    :zookeeper-tracker (using (zookeeper-tracker config)
                              {:channable :s3-uploader})))
