@@ -7,6 +7,8 @@
             [clj-kafka.consumer.zk :refer (consumer messages shutdown)]
             [clojure.tools.logging :refer (info debug error)]
             [baldr.core :refer (baldr-writer)]
+            [uswitch.bifrost.util :refer (close-channels)]
+            ;; TODO: Remove obser
             [uswitch.bifrost.async :refer (observable-chan)]
             [uswitch.bifrost.core :refer (Producer out-chan)]
             [metrics.meters :refer (meter mark! defmeter)])
@@ -16,17 +18,13 @@
   [zookeeper-connect]
   (set (topics {"zookeeper.connect" zookeeper-connect})))
 
-(defprotocol TopicAvailable
-  (new-topics-ch [this]))
-
 (def buffer-size 100)
 
-(defrecord TopicListener [zookeeper-connect]
+(defrecord TopicListener [zookeeper-connect topic-added-ch]
   Lifecycle
   (start [this]
     (info "Starting topic listener..." this)
-    (let [topic-added-ch (observable-chan "topic-added-ch" buffer-size)
-          control-ch (chan)]
+    (let [control-ch (chan)]
       (go-loop [current-topics nil]
         (let [available-topics (get-available-topics zookeeper-connect)
               new-topics       (difference available-topics current-topics)]
@@ -38,27 +36,13 @@
              :else            (recur available-topics)))))
       (info "Topic listener started.")
       (assoc this
-        :topic-added-ch topic-added-ch
-        :topic-listener-control-ch control-ch)))
-  (stop [{:keys [topic-added-ch topic-listener-control-ch] :as this}]
+        :control-ch control-ch)))
+  (stop [this]
     (info "Stopping topic listener...")
-    (when topic-added-ch
-      (info "Closing topic-added-ch")
-      (close! topic-added-ch))
-    (when topic-listener-control-ch
-      (info "Closing topic-listener-control-ch")
-      (close! topic-listener-control-ch))
-    (info "Topic listener stopped.")
-    (dissoc this :topic-added-ch :topic-listener-control-ch))
-  Producer
-  (out-chan [this]
-    (:topic-added-ch this))
-  TopicAvailable
-  (new-topics-ch [this]
-    (:topic-added-ch this)))
+    (close-channels this :control-ch)))
 
 (defn topic-listener [config]
-  (TopicListener. (get-in config [:consumer-properties "zookeeper.connect"])))
+  (map->TopicListener {:zookeeper-connect (get-in config [:consumer-properties "zookeeper.connect"])}))
 
 ;; Consumer (state machine (ALL THE THINGS!))
 
@@ -175,18 +159,17 @@
                 topics)
               topic-blacklist))
 
-(defrecord ConsumerSpawner [consumer-properties rotation-interval topic-blacklist topic-whitelist topic-available]
+(defrecord ConsumerSpawner [consumer-properties rotation-interval topic-blacklist topic-whitelist topic-added-ch]
   Producer
   (out-chan [this]
     (:out-ch this))
   Lifecycle
   (start [this]
     (info "Starting ConsumerSpawner")
-    (let [ch               (new-topics-ch topic-available)
-          rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
+    (let [rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
           consumers        (atom [])]
       (go-loop []
-        (if-let [new-topics (<! ch)]
+        (if-let [new-topics (<! topic-added-ch)]
           (do (doseq [topic (listen-topics topic-blacklist topic-whitelist new-topics)]
                 (info "Spawning consumer for" topic)
                 (swap! consumers conj (spawn-topic-baldr-consumer consumer-properties topic rotation-interval rotated-event-ch)))

@@ -2,34 +2,31 @@
   (:require [com.stuartsierra.component :refer (system-map Lifecycle using start stop)]
             [clojure.tools.logging :refer (info)]
             [clojure.core.async :refer (chan <! >! go-loop timeout alts! close!)]
+            [uswitch.bifrost.async :refer (observable-chan)]
             [uswitch.bifrost.telemetry :refer (metrics-reporter)]
             [uswitch.bifrost.kafka :refer (topic-listener consumer-spawner)]
             [uswitch.bifrost.s3 :refer (s3-upload)]
             [uswitch.bifrost.core :refer (out-chan)]
-            [uswitch.bifrost.zk :refer (zookeeper-tracker)]))
+            [uswitch.bifrost.zk :refer (zookeeper-tracker)])
+  (:import [clojure.core.async.impl.channels ManyToManyChannel]))
 
-(defrecord PrintSink [prefix channable]
+;; TODO
+;; Don't depend on underlying channel type
+(extend-type ManyToManyChannel
   Lifecycle
-  (start [this]
-    (let [ch (out-chan channable)]
-      (go-loop [msg (<! ch)]
-        (when msg
-          (info prefix msg)
-          (recur (<! ch)))))
-    this)
-  (stop [this]
-    this))
+  (stop [this] (when this (close! this)))
+  (start [this] this))
 
-(defn print-sink
-  [prefix]
-  (map->PrintSink {:prefix prefix}))
+(def buffer-size 100)
 
 (defn make-system [config]
   (system-map
    :metrics-reporter (metrics-reporter config)
-   :topic-listener (topic-listener config)
+   :topic-added-ch (observable-chan "topic-added-ch" buffer-size)
+   :topic-listener (using (topic-listener config)
+                          [:topic-added-ch])
    :consumer-spawner (using (consumer-spawner config)
-                            {:topic-available :topic-listener})
+                            [:topic-added-ch])
    :s3-uploader (using (s3-upload config)
                        {:channable :consumer-spawner})
    :zookeeper-tracker (using (zookeeper-tracker config)
