@@ -47,7 +47,7 @@ Here's a complete example of configuring and running an uberjar in
 production.
 
     $ java -Djava.io.tmpdir=/mnt/bifrost-tmp \
-           -Dlogback.configurationFile=/opt/uswitch/insight-bifrost/etc/logback.xml \
+           -Dlogback.configurationFile=/opt/uswitch/bifrost/etc/logback.xml \
            -server \
            -jar /opt/uswitch/bifrost/lib/*-standalone.jar \
            --config /opt/uswitch/bifrost/etc/config.edn
