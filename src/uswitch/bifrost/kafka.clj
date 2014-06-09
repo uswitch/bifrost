@@ -2,7 +2,7 @@
   (:require [clj-kafka.zk :refer (topics)]
             [com.stuartsierra.component :refer (Lifecycle start stop system-map using)]
             [clojure.java.io :refer (file output-stream)]
-            [clojure.core.async :refer (chan <! >! go-loop timeout alts! close! put!)]
+            [clojure.core.async :refer (chan <! >! go-loop timeout alts! close! put! <!!)]
             [clojure.set :refer (difference intersection)]
             [clj-kafka.consumer.zk :refer (consumer messages shutdown)]
             [clojure.tools.logging :refer (info debug error)]
@@ -118,10 +118,27 @@
                         (timeout rotation-interval)))))
     message-ch))
 
+(defn safe-zookeeper-consumer
+  "Repeatedly tries to construct a ZooKeeper consumer. Will retry every
+  15s and log errors. Returns a channel that contains the obtained
+  consumer."
+  [consumer-properties]
+  (let [get-consumer (fn []
+                       (try (consumer consumer-properties)
+                            (catch Exception e
+                              (error e "Unable to create ZooKeeper consumer")
+                              nil)))]
+    (go-loop
+     []
+     (if-let [c (get-consumer)]
+       c
+       (do (<! (timeout (* 15 1000)))
+           (recur))))))
+
 (defrecord TopicBaldrConsumer [consumer-properties topic rotation-interval ch]
   Lifecycle
   (start [this]
-    (let [c (consumer consumer-properties)
+    (let [c (<!! (safe-zookeeper-consumer consumer-properties))
           run? (atom true)]
       (go-loop [msgs (messages c topic)
                 partition->message-ch {}]
