@@ -1,7 +1,7 @@
 (ns uswitch.bifrost.zk
   (:require [clj-kafka.zk :refer (committed-offset set-offset!)]
             [com.stuartsierra.component :refer (Lifecycle)]
-            [clojure.core.async :refer (go-loop <!)]
+            [clojure.core.async :refer (go <!)]
             [clojure.tools.logging :refer (info error)]))
 
 (defrecord ZookeeperTracker [consumer-properties commit-offset-ch]
