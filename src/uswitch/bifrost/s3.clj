@@ -1,13 +1,15 @@
 (ns uswitch.bifrost.s3
-  (:require [com.stuartsierra.component :refer (Lifecycle system-map using)]
+  (:require [com.stuartsierra.component :refer (Lifecycle system-map using start stop)]
             [clojure.tools.logging :refer (info warn error)]
-            [clojure.core.async :refer (<! go-loop chan close! alts! timeout)]
+            [clojure.core.async :refer (<! >! go-loop chan close! alts! timeout >!!)]
             [clojure.java.io :refer (file)]
             [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
             [metrics.timers :refer (time! timer)]
             [clj-kafka.zk :refer (committed-offset set-offset!)]
             [uswitch.bifrost.util :refer (close-channels)]
-            [uswitch.bifrost.async :refer (observable-chan)]))
+            [uswitch.bifrost.async :refer (observable-chan map->Spawner)]))
+
+(def buffer-size 100)
 
 (defn generate-key [consumer-group-id topic partition first-offset]
   (format "%s/%s/partition=%s/%s.baldr.gz"
@@ -68,50 +70,47 @@
                      (error e "Error while deleting file" file-path)
                      {:goto :done}))))
 
-;; TODO: uploaders-n is ignored for now. We need to create loops for
-;; each topic, partition to be able to fan out.
-(defrecord S3Upload [credentials bucket consumer-properties uploaders-n
-                     rotated-event-ch]
-  Lifecycle
-  (start [this]
-
+(defn spawn-s3-upload
+  [credentials bucket consumer-properties
+   semaphore]
+  (let [rotated-event-ch (chan 10)]
     (info "Starting S3Upload component.")
     (when-not (bucket-exists? credentials bucket)
       (info "Creating" bucket "bucket")
       (create-bucket credentials bucket))
+    (go-loop
+     []
+     (let [msg (<! rotated-event-ch)]
+       (if (nil? msg)
 
-    (let [control-ch (chan)]
+         (info "Terminating S3 uploader")
 
-      (go-loop
-       []
-       (let [[v c] (alts! [control-ch rotated-event-ch])]
-         (if (or (= control-ch c) (nil? v))
+         (let [{:keys [topic partition file-path first-offset last-offset]} msg]
+           (.acquire semaphore)
+           (info "Starting S3 upload of" file-path)
+           (loop [state nil]
+             (let [{:keys [goto pause]} (progress-s3-upload state
+                                                            credentials bucket consumer-properties
+                                                            topic partition
+                                                            first-offset last-offset
+                                                            file-path)]
+               (<! (timeout (or pause 0)))
+               (if (= :done goto)
+                 (info "Terminating stepping S3 upload machine.")
+                 (recur goto))))
+           (info "Done uploading to S3:" file-path)
+           (.release semaphore)
+           (recur)))))
+    rotated-event-ch))
 
-           (info "Terminating S3 uploader")
-
-           (let [{:keys [topic partition file-path first-offset last-offset]} v]
-             (info "Starting S3 upload of" file-path)
-             (loop [state nil]
-               (let [{:keys [goto pause]} (progress-s3-upload state
-                                                              credentials bucket consumer-properties
-                                                              topic partition
-                                                              first-offset last-offset
-                                                              file-path)
-                     [v c] (alts! [control-ch (timeout (or pause 0))])]
-                 (if (= c control-ch)
-                   (info "Terminating S3 uploader during upload")
-                   (if (= :done goto)
-                     (info "Terminating stepping S3 upload machine.")
-                     (recur goto)))))
-             (info "Done uploading to S3:" file-path)
-             (recur)))))
-      (assoc this :control-ch control-ch)))
-  (stop [this]
-    (close-channels this :control-ch)))
-
-(defn s3-upload [config]
-  (map->S3Upload (select-keys config [:credentials :bucket :consumer-properties :uploaders-n])))
+(defn s3-upload-spawner [config]
+  (let [{:keys [credentials bucket consumer-properties uploaders-n]} config
+        semaphore (java.util.concurrent.Semaphore. uploaders-n)]
+    (map->Spawner {:key-fn (juxt :partition :topic)
+                   :spawn (partial spawn-s3-upload
+                                   credentials bucket consumer-properties
+                                   semaphore)})))
 
 (defn s3-system [config]
-  (system-map :uploader (using (s3-upload config)
-                               [:rotated-event-ch])))
+  (system-map :uploader (using (s3-upload-spawner config)
+                               {:ch :rotated-event-ch})))
