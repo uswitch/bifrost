@@ -14,6 +14,7 @@
   (try (close! ch)
        (loop [v (<!! ch)]
          (when v (recur (<!! ch))))
+       ch
        (catch Exception e
          (error e "Unable to purge channel" ch)
          nil)))
@@ -34,5 +35,4 @@
    :rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
 
    :kafka-system (using (kafka-system config) [:rotated-event-ch])
-   ;;:s3-system    (using (s3-system    config) [:rotated-event-ch])
-   ))
+   :s3-system    (using (s3-system    config) [:rotated-event-ch])))
