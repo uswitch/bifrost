@@ -47,7 +47,7 @@
                          :pause (* 15 1000)}))
     :commit      (try
                    (set-offset! consumer-properties (consumer-properties "group.id") topic partition last-offset)
-                   (info "Committed offset information to ZooKeeper" topic partition last-offset)
+                   (info "Committed offset information to ZooKeeper" topic partition (inc last-offset))
                    {:goto :delete}
                    (catch Exception e
                      (error e "Unable to commit offset to ZooKeeper. Retrying in 15s.")
@@ -80,7 +80,7 @@
       (go-loop
        []
        (let [[v c] (alts! [control-ch rotated-event-ch])]
-         (if (= control-ch c)
+         (if (or (= control-ch c) (nil? v))
 
            (info "Terminating S3 uploader")
 
