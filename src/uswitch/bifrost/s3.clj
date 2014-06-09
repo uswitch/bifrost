@@ -36,7 +36,11 @@
    file-path]
   (case state
     nil          {:goto :upload-file}
-    :upload-file (try (upload-to-s3 credentials bucket (consumer-properties "group.id")
+    :upload-file (try (info "Starting S3 upload for" {:topic topic
+                                                      :partition partition
+                                                      :first-offset first-offset
+                                                      :last-offset last-offset})
+                      (upload-to-s3 credentials bucket (consumer-properties "group.id")
                                     topic partition
                                     first-offset
                                     file-path)
@@ -46,8 +50,9 @@
                         {:goto  :upload-file
                          :pause (* 15 1000)}))
     :commit      (try
-                   (set-offset! consumer-properties (consumer-properties "group.id") topic partition last-offset)
-                   (info "Committed offset information to ZooKeeper" topic partition last-offset)
+                   (let [commit-offset (inc last-offset)]
+                     (set-offset! consumer-properties (consumer-properties "group.id") topic partition commit-offset)
+                     (info "Committed offset information to ZooKeeper" {:topic topic :partition partition :offset commit-offset}))
                    {:goto :delete}
                    (catch Exception e
                      (error e "Unable to commit offset to ZooKeeper. Retrying in 15s.")

@@ -52,11 +52,15 @@
 (defmeter baldr-writes "records")
 
 (defn consume-message
-  [{:keys [write topic meter first-offset] :as state} message]
+  [{:keys [write topic partition meter first-offset] :as state} message]
   (debug "BaldrConsumer" topic "received" (:offset message))
   (write (:value message))
   (mark! meter)
   (mark! baldr-writes)
+  (when (not first-offset)
+    (info "First offset:" {:offset (:offset message)
+                           :topic  topic
+                           :partition partition}))
   (assoc state
     :first-offset (or first-offset (:offset message))
     :last-offset (:offset message)))
