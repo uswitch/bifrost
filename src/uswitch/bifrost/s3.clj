@@ -37,7 +37,7 @@
    topic partition
    first-offset last-offset
    file-path]
-  (info "Asked to step" {:state state :file-path file-path})
+  (debug "Asked to step" {:state state :file-path file-path})
   (case state
     nil          {:goto :upload-file}
     :upload-file (try (info "Starting S3 upload for" {:topic topic
@@ -89,6 +89,7 @@
          (info "Terminating S3 uploader")
 
          (let [{:keys [topic partition file-path first-offset last-offset]} msg]
+           (debug "Attempting to acquire semaphore to begin upload" {:file-path file-path})
            (.acquire semaphore)
            (info "Starting S3 upload of" file-path)
            (loop [state nil]
