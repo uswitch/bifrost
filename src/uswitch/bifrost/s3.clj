@@ -37,6 +37,7 @@
    topic partition
    first-offset last-offset
    file-path]
+  (info "Asked to step" {:state state :file-path file-path})
   (case state
     nil          {:goto :upload-file}
     :upload-file (try (info "Starting S3 upload for" {:topic topic
