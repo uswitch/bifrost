@@ -1,6 +1,6 @@
 (ns uswitch.bifrost.s3
   (:require [com.stuartsierra.component :refer (Lifecycle system-map using start stop)]
-            [clojure.tools.logging :refer (info warn error)]
+            [clojure.tools.logging :refer (info warn error debug)]
             [clojure.core.async :refer (<! >! go-loop chan close! alts! timeout >!!)]
             [clojure.java.io :refer (file)]
             [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
