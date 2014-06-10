@@ -5,6 +5,7 @@
             [clojure.java.io :refer (file)]
             [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
             [metrics.timers :refer (time! timer)]
+            [metrics.gauges :refer (gauge)]
             [clj-kafka.zk :refer (committed-offset set-offset!)]
             [uswitch.bifrost.util :refer (close-channels)]
             [uswitch.bifrost.async :refer (observable-chan map->Spawner)]))
@@ -107,6 +108,7 @@
 (defn s3-upload-spawner [config]
   (let [{:keys [credentials bucket consumer-properties uploaders-n]} config
         semaphore (java.util.concurrent.Semaphore. uploaders-n)]
+    (gauge "S3-upload-semaphore-queue-length" (.getQueueLength semaphore))
     (map->Spawner {:key-fn (juxt :partition :topic)
                    :spawn (partial spawn-s3-upload
                                    credentials bucket consumer-properties
