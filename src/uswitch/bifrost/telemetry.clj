@@ -1,7 +1,8 @@
 (ns uswitch.bifrost.telemetry
   (:require [clojure.tools.logging :refer (info error)]
             [com.stuartsierra.component :refer (Lifecycle)]
-            [clojure.string :refer (trim-newline)])
+            [clojure.string :refer (trim-newline)]
+            [metrics.gauges :refer (gauge)])
   (:import [com.yammer.metrics.reporting RiemannReporter RiemannReporter$Config]
            [com.aphyr.riemann.client RiemannClient]
            [java.net InetSocketAddress]))
@@ -38,3 +39,29 @@
 
 (defn metrics-reporter [{:keys [riemann-host] :as config}]
   (MetricsReporter. riemann-host))
+
+
+
+(defprotocol RateGauge
+  (reset-gauge! [gauge])
+  (stop-gauge!  [gauge])
+  (update-gauge! [gauge val]))
+
+(defn rate-gauge [name]
+  (let [state (atom nil)
+        g     (gauge name
+                     (if-let [{:keys [started-at updated-at value]} @state]
+                       (let [elapsed (- updated-at started-at)]
+                         (* 1000 (/ value (max elapsed 1))))
+                       0))]
+    (reify RateGauge
+      (stop-gauge! [this]
+        (reset! state nil))
+      (reset-gauge! [this]
+        (reset! state {:value 0
+                       :started-at (System/currentTimeMillis)}))
+      (update-gauge! [this new-val]
+        (swap! state (fn [{:keys [value] :as state}]
+                       (assoc state
+                         :value (+ new-val value)
+                         :updated-at (System/currentTimeMillis))))))))
