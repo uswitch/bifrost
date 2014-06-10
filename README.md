@@ -27,7 +27,7 @@ configuration to connect to Kafka and AWS credentials to store
 baldr-files on S3. The project contains an example configuration in
 `etc/config.edn.example`.
 
-     $ lein run --config ./etc/config.edn
+     $ lein run -- --config ./etc/config.edn
 
 To run the app in production, we recomment building an uberjar and run
 that on the app server.
