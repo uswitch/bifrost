@@ -21,7 +21,7 @@
        []
        (if-let [v (<! ch)]
          (let [k (key-fn v)
-               child-ch (or (get @children k) (spawn))]
+               child-ch (or (get @children k) (spawn k))]
            (swap! children assoc k child-ch)
            (>! child-ch v)
            (recur))

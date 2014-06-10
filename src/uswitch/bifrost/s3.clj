@@ -72,8 +72,9 @@
 
 (defn spawn-s3-upload
   [credentials bucket consumer-properties
-   semaphore]
-  (let [rotated-event-ch (chan 10)]
+   semaphore
+   [partition topic]]
+  (let [rotated-event-ch (observable-chan (str partition "-" topic "-rotation-event-ch") 100)]
     (info "Starting S3Upload component.")
     (when-not (bucket-exists? credentials bucket)
       (info "Creating" bucket "bucket")
