@@ -90,7 +90,7 @@
 
          (let [{:keys [topic partition file-path first-offset last-offset]} msg]
            (debug "Attempting to acquire semaphore to begin upload" {:file-path file-path})
-           (.acquire semaphore)
+           (>! semaphore :token)
            (info "Starting S3 upload of" file-path)
            (loop [state nil]
              (let [{:keys [goto pause]} (progress-s3-upload state
@@ -103,14 +103,13 @@
                  (info "Terminating stepping S3 upload machine.")
                  (recur goto))))
            (info "Done uploading to S3:" file-path)
-           (.release semaphore)
+           (<! semaphore)
            (recur)))))
     rotated-event-ch))
 
 (defn s3-upload-spawner [config]
   (let [{:keys [credentials bucket consumer-properties uploaders-n]} config
-        semaphore (java.util.concurrent.Semaphore. uploaders-n)]
-    (gauge "S3-upload-semaphore-queue-length" (.getQueueLength semaphore))
+        semaphore (observable-chan "semaphore" uploaders-n)]
     (map->Spawner {:key-fn (juxt :partition :topic)
                    :spawn (partial spawn-s3-upload
                                    credentials bucket consumer-properties
