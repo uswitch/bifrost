@@ -2,7 +2,7 @@
   (:require [clj-kafka.zk :refer (topics)]
             [com.stuartsierra.component :refer (Lifecycle start stop system-map using)]
             [clojure.java.io :refer (file output-stream)]
-            [clojure.core.async :refer (chan <! >! go-loop timeout alts! close! put! <!!)]
+            [clojure.core.async :refer (chan <! >! thread go-loop timeout alts! close! put! <!! >!!)]
             [clojure.set :refer (difference intersection)]
             [clj-kafka.consumer.zk :refer (consumer messages shutdown)]
             [clojure.tools.logging :refer (info debug error)]
@@ -140,21 +140,22 @@
   (start [this]
     (let [c (<!! (safe-zookeeper-consumer consumer-properties))
           run? (atom true)]
-      (go-loop [msgs (messages c topic)
-                partition->message-ch {}]
-               (if @run?
-                 (if-let [{:keys [partition] :as msg} (first msgs)]
-                   (let [message-ch (or (partition->message-ch partition)
-                                        (partition-consumer topic partition rotation-interval ch))]
-                     (>! message-ch msg)
-                     (recur (rest msgs)
-                            (assoc partition->message-ch partition message-ch)))
-                   (do
-                     (<! (timeout 50))
-                     (recur msgs partition->message-ch)))
-                 ;; if we shouldn't run, close down message-chs
-                 (doseq [[partition message-ch] partition->message-ch]
-                   (close! message-ch))))
+      (thread
+       (loop [msgs (messages c topic)
+                 partition->message-ch {}]
+                (if @run?
+                  (if-let [{:keys [partition] :as msg} (first msgs)]
+                    (let [message-ch (or (partition->message-ch partition)
+                                         (partition-consumer topic partition rotation-interval ch))]
+                      (>!! message-ch msg)
+                      (recur (rest msgs)
+                             (assoc partition->message-ch partition message-ch)))
+                    (do
+                      (<!! (timeout 50))
+                      (recur msgs partition->message-ch)))
+                  ;; if we shouldn't run, close down message-chs
+                  (doseq [[partition message-ch] partition->message-ch]
+                    (close! message-ch)))))
       (assoc this
         :consumer c
         :run? run?)))
