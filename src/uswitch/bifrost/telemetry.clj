@@ -50,9 +50,10 @@
 (defn rate-gauge [name]
   (let [state (atom nil)
         g     (gauge name
-                     (if-let [{:keys [started-at updated-at value]} @state]
-                       (let [elapsed (- updated-at started-at)]
-                         (* 1000 (/ value (max elapsed 1))))
+                     (if-let [current-state @state]
+                       (let [{:keys [started-at updated-at value]} current-state
+                             elapsed (- updated-at started-at)]
+                         (if (> elapsed 0) (* 1000 (/ value elapsed)) 0))
                        0))]
     (reify RateGauge
       (stop-gauge! [this]
