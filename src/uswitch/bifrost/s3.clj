@@ -7,7 +7,8 @@
             [metrics.timers :refer (time! timer)]
             [clj-kafka.zk :refer (committed-offset set-offset!)]
             [uswitch.bifrost.util :refer (close-channels)]
-            [uswitch.bifrost.async :refer (observable-chan map->Spawner)]))
+            [uswitch.bifrost.async :refer (observable-chan map->Spawner)]
+            [uswitch.bifrost.telemetry :refer (rate-gauge reset-gauge! stop-gauge! update-gauge!)]))
 
 (def buffer-size 100)
 
@@ -18,14 +19,21 @@
           partition
           (format "%010d" first-offset)))
 
+(def caching-rate-gauge (memoize rate-gauge))
+
 (defn upload-to-s3 [credentials bucket consumer-group-id topic partition first-offset file-path]
   (let [f (file file-path)]
     (if (.exists f)
-      (let [key      (generate-key consumer-group-id topic partition first-offset)
+      (let [g        (caching-rate-gauge (str topic "-" partition "-uploadBytes"))
+            key      (generate-key consumer-group-id topic partition first-offset)
             dest-url (str "s3n://" bucket "/" key)]
         (info "Uploading" file-path "to" dest-url)
         (time! (timer (str topic "-s3-upload-time"))
-               (put-object credentials bucket key f))
+               (do (reset-gauge! g)
+                   (put-object credentials bucket key f {:progress-listener (fn [{:keys [bytes-transferred event]}]
+                                                                              (when (= :transferring event)
+                                                                                (update-gauge! g bytes-transferred)))})
+                   (stop-gauge! g)))
         (info "Finished uploading" dest-url))
       (warn "Unable to find file" file-path))))
 
