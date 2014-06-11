@@ -150,7 +150,7 @@
                      (recur (rest msgs)
                             (assoc partition->message-ch partition message-ch)))
                    (do
-                     (<! (timeout 5))
+                     (<! (timeout 50))
                      (recur msgs partition->message-ch)))
                  ;; if we shouldn't run, close down message-chs
                  (doseq [[partition message-ch] partition->message-ch]
