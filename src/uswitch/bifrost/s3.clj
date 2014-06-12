@@ -90,7 +90,7 @@
       (create-bucket credentials bucket))
     (thread
      (loop []
-       (let [msg (<! rotated-event-ch)]
+       (let [msg (<!! rotated-event-ch)]
          (if (nil? msg)
 
            (debug "Terminating S3 uploader")
