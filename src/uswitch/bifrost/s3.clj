@@ -1,7 +1,7 @@
 (ns uswitch.bifrost.s3
   (:require [com.stuartsierra.component :refer (Lifecycle system-map using start stop)]
             [clojure.tools.logging :refer (info warn error debug)]
-            [clojure.core.async :refer (<! >! go-loop chan close! alts! timeout >!!)]
+            [clojure.core.async :refer (<! >! go-loop thread chan close! alts! timeout >!! <!!)]
             [clojure.java.io :refer (file)]
             [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
             [metrics.timers :refer (time! timer)]
@@ -88,30 +88,30 @@
     (when-not (bucket-exists? credentials bucket)
       (info "Creating" bucket "bucket")
       (create-bucket credentials bucket))
-    (go-loop
-     []
-     (let [msg (<! rotated-event-ch)]
-       (if (nil? msg)
+    (thread
+     (loop []
+       (let [msg (<! rotated-event-ch)]
+         (if (nil? msg)
 
-         (debug "Terminating S3 uploader")
+           (debug "Terminating S3 uploader")
 
-         (let [{:keys [topic partition file-path first-offset last-offset]} msg]
-           (debug "Attempting to acquire semaphore to begin upload" {:file-path file-path})
-           (>! semaphore :token)
-           (info "Starting S3 upload of" file-path)
-           (loop [state nil]
-             (let [{:keys [goto pause]} (progress-s3-upload state
-                                                            credentials bucket consumer-properties
-                                                            topic partition
-                                                            first-offset last-offset
-                                                            file-path)]
-               (<! (timeout (or pause 0)))
-               (if (= :done goto)
-                 (info "Terminating stepping S3 upload machine.")
-                 (recur goto))))
-           (info "Done uploading to S3:" file-path)
-           (<! semaphore)
-           (recur)))))
+           (let [{:keys [topic partition file-path first-offset last-offset]} msg]
+             (debug "Attempting to acquire semaphore to begin upload" {:file-path file-path})
+             (>!! semaphore :token)
+             (info "Starting S3 upload of" file-path)
+             (loop [state nil]
+               (let [{:keys [goto pause]} (progress-s3-upload state
+                                                              credentials bucket consumer-properties
+                                                              topic partition
+                                                              first-offset last-offset
+                                                              file-path)]
+                 (<!! (timeout (or pause 0)))
+                 (if (= :done goto)
+                   (info "Terminating stepping S3 upload machine.")
+                   (recur goto))))
+             (info "Done uploading to S3:" file-path)
+             (<!! semaphore)
+             (recur))))))
     rotated-event-ch))
 
 (defn s3-upload-spawner [config]
