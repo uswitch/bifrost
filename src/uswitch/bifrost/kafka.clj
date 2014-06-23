@@ -9,7 +9,8 @@
             [baldr.core :refer (baldr-writer)]
             [uswitch.bifrost.util :refer (close-channels)]
             [uswitch.bifrost.async :refer (observable-chan)]
-            [metrics.meters :refer (meter mark! defmeter)])
+            [metrics.meters :refer (meter mark! defmeter)]
+            [metrics.counters :refer (defcounter inc!)])
   (:import [java.util.zip GZIPOutputStream]))
 
 (defn- get-available-topics
@@ -118,6 +119,8 @@
                         (timeout rotation-interval)))))
     message-ch))
 
+(defcounter zookeeper-consumers)
+
 (defn safe-zookeeper-consumer
   "Repeatedly tries to construct a ZooKeeper consumer. Will retry every
   15s and log errors. Returns a channel that contains the obtained
@@ -131,7 +134,9 @@
     (go-loop
      []
      (if-let [c (get-consumer)]
-       c
+       (do
+         (inc! zookeeper-consumers)
+         c)
        (do (<! (timeout (* 15 1000)))
            (recur))))))
 
