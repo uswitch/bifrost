@@ -142,20 +142,21 @@
           run? (atom true)]
       (thread
        (loop [msgs (messages c topic)
-                 partition->message-ch {}]
-                (if @run?
-                  (if-let [{:keys [partition] :as msg} (first msgs)]
-                    (let [message-ch (or (partition->message-ch partition)
-                                         (partition-consumer topic partition rotation-interval ch))]
-                      (>!! message-ch msg)
-                      (recur (rest msgs)
-                             (assoc partition->message-ch partition message-ch)))
-                    (do
-                      (<!! (timeout 50))
-                      (recur msgs partition->message-ch)))
-                  ;; if we shouldn't run, close down message-chs
-                  (doseq [[partition message-ch] partition->message-ch]
-                    (close! message-ch)))))
+              partition->message-ch {}]
+         (if @run?
+           (if-let [{:keys [partition] :as msg} (first msgs)]
+             (let [message-ch (or (partition->message-ch partition)
+                                  (partition-consumer topic partition rotation-interval ch))]
+               (>!! message-ch msg)
+               (recur (rest msgs)
+                      (assoc partition->message-ch partition message-ch)))
+             (do
+               (<!! (timeout 50))
+               (recur (rest msgs)
+                      partition->message-ch)))
+           ;; if we shouldn't run, close down message-chs
+           (doseq [[partition message-ch] partition->message-ch]
+             (close! message-ch)))))
       (assoc this
         :consumer c
         :run? run?)))
