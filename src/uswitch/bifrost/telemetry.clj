@@ -51,9 +51,11 @@
   (let [state (atom nil)
         g     (gauge name
                      (if-let [current-state @state]
-                       (let [{:keys [started-at updated-at value]} current-state
-                             elapsed (- updated-at started-at)]
-                         (if (> elapsed 0) (* 1000 (/ value elapsed)) 0))
+                       (let [{:keys [started-at updated-at value]} current-state]
+                         (if updated-at
+                           (let [elapsed (- updated-at started-at)]
+                             (if (> elapsed 0) (* 1000 (/ value elapsed)) 0))
+                           0))
                        0))]
     (reify RateGauge
       (stop-gauge! [this]
