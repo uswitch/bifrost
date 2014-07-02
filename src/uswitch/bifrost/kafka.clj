@@ -7,7 +7,7 @@
             [clj-kafka.consumer.zk :refer (consumer messages shutdown)]
             [clojure.tools.logging :refer (info debug error)]
             [baldr.core :refer (baldr-writer)]
-            [uswitch.bifrost.util :refer (close-channels)]
+            [uswitch.bifrost.util :refer (close-channels clear-keys)]
             [uswitch.bifrost.async :refer (observable-chan)]
             [metrics.meters :refer (meter mark! defmeter)]
             [metrics.counters :refer (defcounter inc!)])
@@ -172,7 +172,7 @@
     (when-let [run? (:run? this)]
       (info "TopicBaldrConsumer Terminating message loop")
       (reset! run? false))
-    (dissoc this :consumer :run?)))
+    (clear-keys this :consumer :run?)))
 
 (defn spawn-topic-baldr-consumer
   [consumer-properties topic rotation-interval ch]
@@ -206,7 +206,7 @@
         (info "Stopping consumer" consumer)
         (stop consumer)))
     (info "Finished shutting down consumers")
-    (dissoc this :consumers)))
+    (clear-keys this :consumers)))
 
 (defn consumer-spawner
   [config]

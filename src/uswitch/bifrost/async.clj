@@ -2,7 +2,8 @@
   (:require [clojure.core.async :refer (buffer chan go-loop close! <! >!)]
             [clojure.tools.logging :refer (info)]
             [com.stuartsierra.component :refer (Lifecycle)]
-            [metrics.gauges :refer (gauge)]))
+            [metrics.gauges :refer (gauge)]
+            [uswitch.bifrost.util :refer (clear-keys)]))
 
 (defn observable-buffer [name ^long n]
   (let [b (buffer n)]
@@ -31,4 +32,4 @@
     (info "Closing children of spawner" this)
     (doseq [[k ch] @(:children this)]
       (when ch (close! ch)))
-    (dissoc this :children)))
+    (clear-keys this :children)))

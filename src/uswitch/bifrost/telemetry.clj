@@ -2,7 +2,8 @@
   (:require [clojure.tools.logging :refer (info error)]
             [com.stuartsierra.component :refer (Lifecycle)]
             [clojure.string :refer (trim-newline)]
-            [metrics.gauges :refer (gauge)])
+            [metrics.gauges :refer (gauge)]
+            [uswitch.bifrost.util :refer (clear-keys)])
   (:import [com.yammer.metrics.reporting RiemannReporter RiemannReporter$Config]
            [com.aphyr.riemann.client RiemannClient]
            [java.net InetSocketAddress]))
@@ -35,7 +36,7 @@
     (when-let [reporter (:reporter this)]
       (info "Shutting down MetricsReporter")
       (.shutdown reporter))
-    (dissoc this :reporter)))
+    (clear-keys this :reporter)))
 
 (defn metrics-reporter [{:keys [riemann-host] :as config}]
   (MetricsReporter. riemann-host))
