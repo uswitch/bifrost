@@ -1,5 +1,5 @@
 # Explicit exclusions
-resources/conf/config.edn
+src/main/resources/conf/config.edn
 BUILD_NUMBER
 
 
