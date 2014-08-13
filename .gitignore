@@ -1,11 +1,49 @@
-/target
-/classes
-/checkouts
-pom.xml
-pom.xml.asc
-*.jar
+# Explicit exclusions
+resources/conf/config.edn
+BUILD_NUMBER
+
+
+# Build and Package Files
+build/
+target/
+velocity.log
 *.class
-/.lein-*
-/.nrepl-port
-/etc/config.edn
-/resources/BUILD_NUMBER
+*.jar
+*.war
+*.ear
+.lein-*
+.nrepl-port
+
+# IDE Metadata
+.svn/
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+.classpath
+.eclipse/
+.project
+.revision/
+.settings/
+
+# Intermediate files
+*.pyc
+
+# Mobile Tools for Java (J2ME)
+.mtj
+.tmp/
+
+# Virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# Emacs backup files
+*~
+
+# Security and private
+*.md5
+*.sha1
+*Credentials.properties
+
+# Vagrant
+.vagrant
