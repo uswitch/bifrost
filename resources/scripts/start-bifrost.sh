@@ -44,7 +44,8 @@ JVM_OPTIONS="-Djava.io.tmpdir=$LOCAL_DATA_DIR $JVM_OPTIONS"
 # Allowing all JVM options to be overwritten from the calling environment
 JAVA_OPTIONS=${JAVA_OPTIONS:-${JVM_OPTIONS}}
 
-CONFIG_EDN=${CONFIG_EDN:-"/Users/bbehzadi/Projects/storycloud/bifrost/resources/conf/config.edn"}
+CONFIG_EDN=${CONFIG_EDN:-"/etc/storycloud/bifrost.properties"}
+checkFileExists $CONFIG_EDN
 
 set -x
 exec $JAVA $JAVA_OPTIONS -jar $JAR --config $CONFIG_EDN
