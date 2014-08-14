@@ -21,26 +21,21 @@ does not allow for arbitrary indexing.
 
 ## Usage
 
-bifrost can be run directly from a checkout of the project by using
-leiningen. The app requires some basic configuration, namely ZooKeeper
+The app requires some basic configuration, namely ZooKeeper
 configuration to connect to Kafka and AWS credentials to store
-baldr-files on S3. The project contains an example configuration in
-`etc/config.edn.example`.
+baldr-files on S3. 
 
-     $ lein run -- --config ./etc/config.edn
-
-To run the app in production, we recomment building an uberjar and run
-that on the app server.
-
-    $ lein uberjar
-    $ java -jar target/*-standalone.jar --config /opt/uswitch/bifrost/etc/config.edn
+See `scripts/start-bifrost.sh` for the location of the configuration file
+ which is based on the template provided in `etc/config.edn.example`.
 
 The Java temp-dir is used for storing baldr-files locally before
 uploading them. Files are removed upon succesful upload and program
-exit. To change the temp-directory, override `java.io.tmpdir`.
+exit. To change the temp-directory, override `java.io.tmpdir` 
+in `scripts/start-bifrost.sh`.
 
 Logging is done through logback. To configure logback, please set
-`logback.configurationFile`. The logback configuration is only respected
+`logback.configurationFile` in `scripts/start-bifrost.sh`. 
+The logback configuration is only respected
 for uberjars. sl4j is used in development.
 
 Here's a complete example of configuring and running an uberjar in

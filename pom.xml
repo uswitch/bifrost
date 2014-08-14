@@ -36,11 +36,6 @@
         </dependency>
         <dependency>
             <groupId>org.clojure</groupId>
-            <artifactId>clojure</artifactId>
-            <version>1.6.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.clojure</groupId>
             <artifactId>tools.logging</artifactId>
             <version>0.2.6</version>
         </dependency>

@@ -27,14 +27,13 @@ JAVA_HOME=${JAVA_HOME:-"/usr/java/jdk1.7.0_55"}
 JAVA=$JAVA_HOME/bin/java
 checkFileExists $JAVA
 
-# TODO-Behnam use deployable parameters - NB. no maven here :-(
-
-JAR_DIR=${JAR_DIR:-"/home/vagrant/Projects/storycloud/bifrost/target"}
+DEFAULT_JAR_DIR="${project.install.dir}"
+JAR_DIR=${JAR_DIR:-"$DEFAULT_JAR_DIR"}
 checkDirExists $JAR_DIR
-JAR=$(ls $JAR_DIR/*-standalone.jar 2>/dev/null)
+JAR=$(ls $JAR_DIR/${project.build.finalName}-jar-with-dependencies.jar)
 checkFileExists $JAR
 
-LOG_CONF=${LOG_CONF:-"/home/vagrant/Projects/storycloud/bifrost/resources/conf/logback.xml"}
+LOG_CONF="${project.install.confDir}/log/logback-${project.name}.xml"
 checkFileExists $LOG_CONF
 JVM_OPTIONS="-Dlogback.configurationFile=$LOG_CONF $JVM_OPTIONS"
 
@@ -52,3 +51,4 @@ exec $JAVA $JAVA_OPTIONS -jar $JAR --config $CONFIG_EDN
 set +x
 
 exit 0
+
