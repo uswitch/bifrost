@@ -12,8 +12,9 @@
 
 (def buffer-size 100)
 
-(defn generate-key [consumer-group-id topic partition first-offset]
-  (format "%s/%s/partition=%s/%s.baldr.gz"
+(defn generate-key [s3-prefix consumer-group-id topic partition first-offset]
+  (format "%s/%s/%s/partition=%s/%s.baldr.gz"
+          s3-prefix
           consumer-group-id
           topic
           partition
@@ -21,11 +22,11 @@
 
 (def caching-rate-gauge (memoize rate-gauge))
 
-(defn upload-to-s3 [credentials bucket consumer-group-id topic partition first-offset file-path]
+(defn upload-to-s3 [credentials bucket s3-prefix consumer-group-id topic partition first-offset file-path]
   (let [f (file file-path)]
     (if (.exists f)
       (let [g        (caching-rate-gauge (str topic "-" partition "-uploadBytes"))
-            key      (generate-key consumer-group-id topic partition first-offset)
+            key      (generate-key s3-prefix consumer-group-id topic partition first-offset)
             dest-url (str "s3n://" bucket "/" key)]
         (info "Uploading" file-path "to" dest-url)
         (time! (timer (str topic "-s3-upload-time"))
@@ -40,18 +41,19 @@
 (defn progress-s3-upload
   "Performs a step through uploading a file to S3. Returns {:goto :pause}"
   [state
-   credentials bucket consumer-properties
+   credentials bucket s3-prefix consumer-properties
    topic partition
    first-offset last-offset
    file-path]
   (debug "Asked to step" {:state state :file-path file-path})
   (case state
     nil          {:goto :upload-file}
-    :upload-file (try (info "Starting S3 upload for" {:topic topic
+    :upload-file (try (info "Starting S3 upload for" {:s3-prefix s3-prefix
+                                                      :topic topic
                                                       :partition partition
                                                       :first-offset first-offset
                                                       :last-offset last-offset})
-                      (upload-to-s3 credentials bucket (consumer-properties "group.id")
+                      (upload-to-s3 credentials bucket s3-prefix (consumer-properties "group.id")
                                     topic partition
                                     first-offset
                                     file-path)
@@ -80,7 +82,7 @@
                      {:goto :done}))))
 
 (defn spawn-s3-upload
-  [credentials bucket consumer-properties
+  [credentials bucket s3-prefix consumer-properties
    semaphore
    [partition topic]]
   (let [rotated-event-ch (observable-chan (str partition "-" topic "-rotation-event-ch") 100)]
@@ -101,7 +103,7 @@
              (info "Starting S3 upload of" file-path)
              (loop [state nil]
                (let [{:keys [goto pause]} (progress-s3-upload state
-                                                              credentials bucket consumer-properties
+                                                              credentials bucket s3-prefix consumer-properties
                                                               topic partition
                                                               first-offset last-offset
                                                               file-path)]
@@ -115,11 +117,11 @@
     rotated-event-ch))
 
 (defn s3-upload-spawner [config]
-  (let [{:keys [credentials bucket consumer-properties uploaders-n]} config
+  (let [{:keys [credentials bucket s3-prefix consumer-properties uploaders-n]} config
         semaphore (observable-chan "semaphore" uploaders-n)]
     (map->Spawner {:key-fn (juxt :partition :topic)
                    :spawn (partial spawn-s3-upload
-                                   credentials bucket consumer-properties
+                                   credentials bucket s3-prefix consumer-properties
                                    semaphore)})))
 
 (defn s3-system [config]
