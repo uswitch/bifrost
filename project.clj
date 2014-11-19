@@ -21,8 +21,14 @@
                  [org.slf4j/slf4j-api "1.6.4"]
                  [org.slf4j/log4j-over-slf4j "1.6.4"]]
   :main uswitch.bifrost.main
+  :uberimage {:base-image "mastodonc/basejava"
+              :cmd ["/bin/bash" "/start-bifrost"]
+              :files {"start-bifrost" "docker/start-bifrost.sh"}
+              :tag "mastodonc/kixi.bifrost"}
   :profiles {:uberjar {:dependencies [[ch.qos.logback/logback-classic "1.1.2"]]
                        :aot          [uswitch.bifrost.main]}
+
              :dev {:source-paths ["dev"]
                    :dependencies [[org.clojure/tools.namespace "0.2.3"]
-                                  [org.slf4j/slf4j-simple "1.6.4"]]}})
+                                  [org.slf4j/slf4j-simple "1.6.4"]]
+                   :plugins [[com.palletops/uberimage "0.3.0"]]}})
