@@ -15,11 +15,11 @@ cat <<EOF > ${CONFIG_FILE}
  :rotation-interval   60000 ; milliseconds
  :credentials         {:access-key "${AWS_ACCESS_KEY}"
                        :secret-key "${AWS_SECRET_KEY}"
-                       :endpoint "${AWS_DEFAULT_REGION:-s3-eu-west-1}.amazonaws.com"}
+                       :endpoint "${AWS_ENDPOINT:-s3.amazonaws.com}"}
  :uploaders-n         4 ; max-number of concurrent threads uploading to S3
- :bucket              "momondo-events"
+ :bucket              "${BIFROST_BUCKET:test-momondo-events}"
  :riemann-host        nil ; if :riemann-host is set, metrics will be pushed to that host
  }
 EOF
 
-java -jar /uberjar.jar --config /bifrost-config.edn
+java -jar /uberjar.jar --config ${CONFIG_FILE}
