@@ -3,21 +3,19 @@
 CONFIG_FILE="/bifrost-config.edn"
 
 cat <<EOF > ${CONFIG_FILE}
-{:consumer-properties {"zookeeper.connect"  "${ZK01_PORT_2181_TCP_ADDR}:${ZK01_PORT_2181_TCP_PORT}"
+{:consumer-properties {"zookeeper.connect"  "${ZK01_PORT_2181_TCP_ADDR:-localhost}:${ZK01_PORT_2181_TCP_PORT:2181}"
                        "group.id"           "bifrost"
                        "auto.offset.reset"  "smallest" ; we explicitly commit offsets once files have
                                                        ; been uploaded to s3 so no need for auto commit
                        "auto.commit.enable" "false"}
  :topic-blacklist     nil
- :topic-whitelist     nil ; if :topic-whitelist is defined, only topics
-                          ; from the whitelist will be backed up. The
-                          ; value should be a set of strings.
+ :topic-whitelist     #{"${TOPIC:-events}"}
  :rotation-interval   60000 ; milliseconds
  :credentials         {:access-key "${AWS_ACCESS_KEY}"
                        :secret-key "${AWS_SECRET_KEY}"
                        :endpoint "${AWS_ENDPOINT:-s3.amazonaws.com}"}
  :uploaders-n         4 ; max-number of concurrent threads uploading to S3
- :bucket              "${BIFROST_BUCKET:test-momondo-events}"
+ :bucket              "${BIFROST_BUCKET:-test-momondo-events}"
  :riemann-host        nil ; if :riemann-host is set, metrics will be pushed to that host
  }
 EOF
