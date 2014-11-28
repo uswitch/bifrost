@@ -11,8 +11,8 @@ cat <<EOF > ${CONFIG_FILE}
  :topic-blacklist     nil
  :topic-whitelist     #{"${TOPIC:-events}"}
  :rotation-interval   60000 ; milliseconds
- :credentials         {:access-key "${AWS_ACCESS_KEY}"
-                       :secret-key "${AWS_SECRET_KEY}"
+ :credentials         {:access-key "${AWS_ACCESS_KEY_ID:-AWS_ACCESS_KEY_ID_NOT_DEFINED}"
+                       :secret-key "${AWS_SECRET_ACCESS_KEY:-AWS_SECRET_ACCESS_KEY_ID_NOT_DEFINED}"
                        :endpoint "${AWS_ENDPOINT:-s3.amazonaws.com}"}
  :uploaders-n         4 ; max-number of concurrent threads uploading to S3
  :bucket              "${BIFROST_BUCKET:-test-momondo-events}"
