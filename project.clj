@@ -8,6 +8,8 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
                  [com.stuartsierra/component "0.2.1"]
+                 [com.fasterxml.jackson.core/jackson-databind   "2.4.4"]
+
                  [org.clojure/core.async "0.1.278.0-76b25b-alpha"]
                  [clj-kafka "0.2.6-0.8" :exclusions [org.slf4j/slf4j-simple]]
                  [riemann-clojure-client "0.2.9"]
@@ -17,9 +19,15 @@
                  [org.xerial.snappy/snappy-java "1.1.0.1"]
                  [org.clojure/tools.cli "0.3.1"]
 
-                 ;; logging hell
-                 [org.slf4j/slf4j-api "1.6.4"]
-                 [org.slf4j/log4j-over-slf4j "1.6.4"]]
+                 ;; Logging
+                 [org.clojure/tools.logging                     "0.3.1"]
+                 [ch.qos.logback/logback-classic                "1.1.2"]
+                 [org.slf4j/jul-to-slf4j                        "1.7.7"]
+                 [org.slf4j/jcl-over-slf4j                      "1.7.7"]
+                 [org.slf4j/log4j-over-slf4j                    "1.7.7"]
+
+                 [net.logstash.logback/logstash-logback-encoder "3.4"]]
+
   :main uswitch.bifrost.main
   :uberimage {:base-image "mastodonc/basejava"
               :cmd ["/bin/bash" "/start-bifrost"]
