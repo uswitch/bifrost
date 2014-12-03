@@ -17,15 +17,24 @@
     :validate [string?]]
    ["-h" "--help"]])
 
+(defn credentials
+  [config]
+  (let [{{:keys [access-key secret-key]
+          :or {access-key (System/getenv "AWS_ACCESS_KEY_ID")
+               secret-key (System/getenv "AWS_SECRET_ACCESS_KEY")}} :credentials} config]
+    (update-in config [:credentials]
+               assoc :access-key access-key :secret-key secret-key)))
+
 (defn -main [& args]
   (let [{:keys [options summary]} (parse-opts args cli-options)]
     (when (:help options)
       (println summary)
       (System/exit 0))
-    (let [{:keys [config]} options]
+    (let [{:keys [config]} options
+          config (-> config slurp read-string credentials)]
       (info "Bifrost" (current-version))
       (when (current-build-number)
         (gauge "build-number" (current-build-number)))
       (info "Starting Bifrost with config" config)
-      (start (make-system (read-string (slurp config))))
+      (start (make-system config))
       (wait!))))
