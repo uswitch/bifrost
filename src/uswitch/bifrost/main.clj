@@ -18,12 +18,9 @@
    ["-h" "--help"]])
 
 (defn credentials
-  [config]
-  (let [{{:keys [access-key secret-key]
-          :or {access-key (System/getenv "AWS_ACCESS_KEY_ID")
-               secret-key (System/getenv "AWS_SECRET_ACCESS_KEY")}} :credentials} config]
-    (update-in config [:credentials]
-               assoc :access-key access-key :secret-key secret-key)))
+  [{:keys [access-key secret-key]}]
+  {:access-key (or (System/getenv "AWS_ACCESS_KEY_ID") access-key)
+   :secret-key (or (System/getenv "AWS_SECRET_ACCESS_KEY") secret-key)})
 
 (defn -main [& args]
   (let [{:keys [options summary]} (parse-opts args cli-options)]
@@ -31,7 +28,7 @@
       (println summary)
       (System/exit 0))
     (let [{:keys [config]} options
-          config (-> config slurp read-string credentials)]
+          config (-> config (slurp) (read-string) (update-in [:credentials] credentials))]
       (info "Bifrost" (current-version))
       (when (current-build-number)
         (gauge "build-number" (current-build-number)))
