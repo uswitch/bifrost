@@ -11,9 +11,9 @@ cat <<EOF > ${CONFIG_FILE}
  :topic-blacklist     nil
  :topic-whitelist     #{"${TOPIC:-events}"}
  :rotation-interval   60000 ; milliseconds
- :credentials         {:access-key "${AWS_ACCESS_KEY_ID:-AWS_ACCESS_KEY_ID_NOT_DEFINED}"
-                       :secret-key "${AWS_SECRET_ACCESS_KEY:-AWS_SECRET_ACCESS_KEY_ID_NOT_DEFINED}"
-                       :endpoint "${AWS_ENDPOINT:-s3.amazonaws.com}"}
+ :credentials         {:access-key "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID NOT_DEFINED}"
+                       :secret-key "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY_ID NOT_DEFINED}"
+                       :endpoint "s3.${AWS_DEFAULT_REGION}${AWS_DEFAULT_REGION:+.}amazonaws.com"}
  :uploaders-n         4 ; max-number of concurrent threads uploading to S3
  :bucket              "${BIFROST_BUCKET:-test-momondo-events}"
  :riemann-host        nil ; if :riemann-host is set, metrics will be pushed to that host
