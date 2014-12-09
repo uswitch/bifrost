@@ -4,7 +4,7 @@ CONFIG_FILE="/bifrost-config.edn"
 
 cat <<EOF > ${CONFIG_FILE}
 {:consumer-properties {"zookeeper.connect"  "${ZK01_PORT_2181_TCP_ADDR:-localhost}:${ZK01_PORT_2181_TCP_PORT:2181}"
-                       "group.id"           "bifrost"
+                       "group.id"           "${BIFROST_CONSUMER_GROUP_ID:?BIFROST_CONSUMER_GROUP_ID_NOT_DEFINED}"
                        "auto.offset.reset"  "smallest" ; we explicitly commit offsets once files have
                                                        ; been uploaded to s3 so no need for auto commit
                        "auto.commit.enable" "false"}
