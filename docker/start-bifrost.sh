@@ -12,6 +12,7 @@ else
     AWS_S3_ENDPONT="s3.amazonaws.com"
 fi
 
+mkdir -p ${DATA_DIR}
 echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
 
