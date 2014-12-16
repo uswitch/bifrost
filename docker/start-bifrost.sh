@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DATA_DIR="/data/bifrost/${HOSTNAME}/"
+
 CONFIG_FILE="/bifrost-config.edn"
 
 # This isn't exhaustive, but works for now.
@@ -10,6 +12,7 @@ else
     AWS_S3_ENDPONT="s3.amazonaws.com"
 fi
 
+echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
 
 cat <<EOF > ${CONFIG_FILE}
@@ -30,4 +33,4 @@ cat <<EOF > ${CONFIG_FILE}
  }
 EOF
 
-java -jar /uberjar.jar --config ${CONFIG_FILE}
+java -jar -Djava.io.tmpdir=${DATA_DIR} /uberjar.jar --config ${CONFIG_FILE}
