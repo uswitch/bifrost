@@ -13,7 +13,7 @@
 (def buffer-size 100)
 
 (defn generate-key [consumer-group-id topic partition first-offset]
-  (format "%s/%s/partition=%s/%s.baldr.gz"
+  (format "%s/%s/partition%02d/%s.baldr.gz"
           consumer-group-id
           topic
           partition
