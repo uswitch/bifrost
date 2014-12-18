@@ -37,6 +37,7 @@ cat <<EOF > ${CONFIG_FILE}
                        "group.id"           "${BIFROST_CONSUMER_GROUP_ID:?BIFROST_CONSUMER_GROUP_ID_NOT_DEFINED}"
                        "auto.offset.reset"  "smallest" ; we explicitly commit offsets once files have
                                                        ; been uploaded to s3 so no need for auto commit
+                       "fetch.size"         "${BIFROST_CONSUMER_FETCH_SIZE:-1000000}"
                        "auto.commit.enable" "false"}
  :topic-blacklist     nil
  :topic-whitelist     #{"${TOPIC:-events}"}
