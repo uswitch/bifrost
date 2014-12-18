@@ -24,7 +24,7 @@ do
     zk_addr_name="${zk_name}_PORT_2181_TCP_ADDR"
     zk_port_name="${zk_name}_PORT_2181_TCP_PORT"
 
-    [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}")
+    [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}/kafka")
 done
 
 ZK_CONNECT=$(join , ${hosts[@]})
