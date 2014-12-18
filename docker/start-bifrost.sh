@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DATA_DIR="/data/bifrost/${HOSTNAME}/"
+mkdir -p ${DATA_DIR}
 
 CONFIG_FILE="/bifrost-config.edn"
 
@@ -12,12 +13,27 @@ else
     AWS_S3_ENDPONT="s3.amazonaws.com"
 fi
 
-mkdir -p ${DATA_DIR}
+
+function join { local IFS="$1"; shift; echo "$*"; }
+
+#Add entries for zookeeper peers.
+hosts=()
+for i in $(seq 255)
+do
+    zk_name=$(printf "ZK%02d" ${i})
+    zk_addr_name="${zk_name}_PORT_2181_TCP_ADDR"
+    zk_port_name="${zk_name}_PORT_2181_TCP_PORT"
+
+    [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}")
+done
+
+ZK_CONNECT=$(join , ${hosts[@]})
+echo "Zookeeper connect string is ${ZK_CONNECT}"
 echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
 
 cat <<EOF > ${CONFIG_FILE}
-{:consumer-properties {"zookeeper.connect"  "${ZK01_PORT_2181_TCP_ADDR:-localhost}:${ZK01_PORT_2181_TCP_PORT:2181}"
+{:consumer-properties {"zookeeper.connect"  "${ZK_CONNECT}"
                        "group.id"           "${BIFROST_CONSUMER_GROUP_ID:?BIFROST_CONSUMER_GROUP_ID_NOT_DEFINED}"
                        "auto.offset.reset"  "smallest" ; we explicitly commit offsets once files have
                                                        ; been uploaded to s3 so no need for auto commit
