@@ -1,0 +1,23 @@
+#!/bin/bash
+
+function assert_git_is_clean() {
+    status=$(git status --porcelain)
+
+    if [ -n "${status}" ]; then
+	echo "Working directory is not clean. Aborting..."
+	exit 1
+    fi
+}
+
+assert_git_is_clean
+
+lein clean
+
+lein uberjar
+
+IMAGE_NAME=mastodonc/kixi.bifrost
+TAG=git-$(git rev-parse --short HEAD)
+
+docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${TAG}
+docker push ${IMAGE_NAME}:latest
+docker push ${IMAGE_NAME}:${TAG}
