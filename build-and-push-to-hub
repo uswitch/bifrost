@@ -11,8 +11,6 @@ function assert_git_is_clean() {
 
 assert_git_is_clean
 
-lein clean
-
 lein do clean, uberimage
 
 IMAGE_NAME=mastodonc/kixi.bifrost
