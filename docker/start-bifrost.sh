@@ -16,6 +16,9 @@ fi
 
 function join { local IFS="$1"; shift; echo "$*"; }
 
+ZK_CHROOT=${ZK_CHROOT:-/}
+echo "ZK_CHROOT is ${ZK_CHROOT}"
+
 #Add entries for zookeeper peers.
 hosts=()
 for i in $(seq 255)
@@ -24,10 +27,10 @@ do
     zk_addr_name="${zk_name}_PORT_2181_TCP_ADDR"
     zk_port_name="${zk_name}_PORT_2181_TCP_PORT"
 
-    [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}/kafka")
+    [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}")
 done
 
-ZK_CONNECT=$(join , ${hosts[@]})
+ZK_CONNECT="$(join , ${hosts[@]})${ZK_CHROOT}"
 echo "Zookeeper connect string is ${ZK_CONNECT}"
 echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
