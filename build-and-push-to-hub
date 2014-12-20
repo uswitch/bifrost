@@ -13,7 +13,7 @@ assert_git_is_clean
 
 lein clean
 
-lein uberjar
+lein uberimage
 
 IMAGE_NAME=mastodonc/kixi.bifrost
 TAG=git-$(git rev-parse --short HEAD)
