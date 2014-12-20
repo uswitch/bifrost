@@ -13,11 +13,11 @@ assert_git_is_clean
 
 lein clean
 
-lein uberimage
+lein do clean, uberimage
 
 IMAGE_NAME=mastodonc/kixi.bifrost
-TAG=git-$(git rev-parse --short HEAD)
+TAG=git-$(git rev-parse --short=12 HEAD)
 
-docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${TAG}
-docker push ${IMAGE_NAME}:latest
-docker push ${IMAGE_NAME}:${TAG}
+docker tag ${IMAGE_NAME} ${IMAGE_NAME}:latest
+docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
+docker push ${IMAGE_NAME}
