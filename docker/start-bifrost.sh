@@ -10,7 +10,7 @@ CONFIG_FILE="/bifrost-config.edn"
 if [ -n "$AWS_DEFAULT_REGION" ] ; then
     AWS_S3_ENDPOINT="s3-${AWS_DEFAULT_REGION}.amazonaws.com"
 else
-    AWS_S3_ENDPONT="s3.amazonaws.com"
+    AWS_S3_ENDPOINT="s3.amazonaws.com"
 fi
 
 
