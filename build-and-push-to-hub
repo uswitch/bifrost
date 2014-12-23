@@ -16,6 +16,6 @@ lein do clean, uberimage
 IMAGE_NAME=mastodonc/kixi.bifrost
 TAG=git-$(git rev-parse --short=12 HEAD)
 
-docker tag ${IMAGE_NAME} ${IMAGE_NAME}:latest
+docker tag -f ${IMAGE_NAME} ${IMAGE_NAME}:latest
 docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
 docker push ${IMAGE_NAME}
