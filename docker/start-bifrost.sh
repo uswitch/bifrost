@@ -36,12 +36,12 @@ echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
 
 cat <<EOF > ${CONFIG_FILE}
-{:consumer-properties {"zookeeper.connect"  "${ZK_CONNECT}"
-                       "group.id"           "${BIFROST_CONSUMER_GROUP_ID:?BIFROST_CONSUMER_GROUP_ID_NOT_DEFINED}"
-                       "auto.offset.reset"  "smallest" ; we explicitly commit offsets once files have
-                                                       ; been uploaded to s3 so no need for auto commit
-                       "fetch.size"         "${BIFROST_CONSUMER_FETCH_SIZE:-1000000}"
-                       "auto.commit.enable" "false"}
+{:consumer-properties {"zookeeper.connect"       "${ZK_CONNECT}"
+                       "group.id"                "${BIFROST_CONSUMER_GROUP_ID:?BIFROST_CONSUMER_GROUP_ID_NOT_DEFINED}"
+                       "auto.offset.reset"       "smallest" ; we explicitly commit offsets once files have
+                                                         ; been uploaded to s3 so no need for auto commit
+                       "fetch.message.max.bytes" "${BIFROST_CONSUMER_FETCH_SIZE:-1000000}"
+                       "auto.commit.enable"      "false"}
  :topic-blacklist     nil
  :topic-whitelist     #{"${TOPIC:-events}"}
  :rotation-interval   60000 ; milliseconds
