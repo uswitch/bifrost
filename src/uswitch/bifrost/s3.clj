@@ -8,13 +8,16 @@
             [clj-kafka.zk :refer (committed-offset set-offset!)]
             [uswitch.bifrost.util :refer (close-channels)]
             [uswitch.bifrost.async :refer (observable-chan map->Spawner)]
-            [uswitch.bifrost.telemetry :refer (rate-gauge reset-gauge! stop-gauge! update-gauge!)]))
+            [uswitch.bifrost.telemetry :refer (rate-gauge reset-gauge! stop-gauge! update-gauge!)]
+            [clj-time.core :refer (now)]
+            [clj-time.format :as tf]))
 
 (def buffer-size 100)
+(def key-date-formatter (tf/formatters :basic-date))
 
-(defn generate-key [consumer-group-id topic partition first-offset]
+(defn generate-key [topic partition first-offset]
   (format "%s/%s/partition%02d/%s.baldr.gz"
-          consumer-group-id
+          (tf/unparse key-date-formatter (now))
           topic
           partition
           (format "%010d" first-offset)))
@@ -25,7 +28,7 @@
   (let [f (file file-path)]
     (if (.exists f)
       (let [g        (caching-rate-gauge (str topic "-" partition "-uploadBytes"))
-            key      (generate-key consumer-group-id topic partition first-offset)
+            key      (generate-key topic partition first-offset)
             dest-url (str "s3n://" bucket "/" key)]
         (info "Uploading" file-path "to" dest-url)
         (time! (timer (str topic "-s3-upload-time"))
