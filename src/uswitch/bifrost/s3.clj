@@ -90,7 +90,11 @@
     (info "Starting S3Upload component.")
     (when-not (bucket-exists? credentials bucket)
       (info "Creating" bucket "bucket")
-      (create-bucket credentials bucket))
+      (try
+        (create-bucket credentials bucket)
+        (catch Throwable t
+          (warn "Creation of bucket" bucket "failed with error" (.getMessage t)
+                ". Assuming it will be there when we need it."))))
     (thread
      (loop []
        (let [msg (<!! rotated-event-ch)]
