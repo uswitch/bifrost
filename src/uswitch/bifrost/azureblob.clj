@@ -123,12 +123,12 @@
     rotated-event-ch))
 
 
-(defn azureblob-upload-spawner [{:keys [azurestorage-credentials consumer-properties uploaders-n] :as config}]
-  (info "Configuration sent to azureblob->" config)
-  (let [semaphore (observable-chan "semaphore" uploaders-n)]
+(defn azureblob-upload-spawner [{:keys [cloud-storage consumer-properties uploaders-n]}]
+  (let [credentials (:credentials cloud-storage)
+        semaphore (observable-chan "semaphore" uploaders-n)]
     (map->Spawner {:key-fn (juxt :partition :topic)
                    :spawn (partial spawn-azureblob-upload
-                                   azurestorage-credentials consumer-properties
+                                   credentials consumer-properties
                                    semaphore)})))
 
 (defn azureblob-system [config]

@@ -5,7 +5,8 @@
             [uswitch.bifrost.async :refer (observable-chan)]
             [uswitch.bifrost.telemetry :refer (metrics-reporter)]
             [uswitch.bifrost.kafka :refer (kafka-system)]
-            [uswitch.bifrost.s3 :refer (s3-system)])
+            [uswitch.bifrost.s3 :refer (s3-system)]
+            [uswitch.bifrost.azureblob :refer (azureblob-system)])
   (:import [clojure.core.async.impl.channels ManyToManyChannel]))
 
 (defn purge!
@@ -28,6 +29,15 @@
 
 (def buffer-size 100)
 
+(defn make-storage-system [{:keys [cloud-storage] :as config}]
+  (let [storage-type (:type cloud-storage)]
+    (case storage-type
+      :s3-storage (s3-system config)
+      :azure-storage (azureblob-system config)
+      (do
+        (error "Unknown/Unsupported :cloud-storage in config ->" storage-type)
+        (System/exit 2)))))
+
 (defn make-system [config]
   (system-map
    :metrics-reporter (metrics-reporter config)
@@ -35,4 +45,4 @@
    :rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
 
    :kafka-system (using (kafka-system config) [:rotated-event-ch])
-   :s3-system    (using (s3-system    config) [:rotated-event-ch])))
+   :storage-system (using (make-storage-system config) [:rotated-event-ch])))

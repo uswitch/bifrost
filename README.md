@@ -2,10 +2,10 @@
 
 # bifrost
 
-Archive Kafka data safely to S3.
+Archive Kafka data safely to either Amazon's S3 or Microsoft's Azure Blob Storage.
 
 bifrost is a daemon that connects to Kafka, consumes all topics and
-persists them to S3 for long term storage and analysis. It uses the
+persists them to the cloud for long term storage and analysis. It uses the
 [baldr file format](https://github.com/uswitch/baldr) to store Kafka
 messages. baldr-files are gzipped before they are written to disk.
 
@@ -23,8 +23,8 @@ does not allow for arbitrary indexing.
 
 bifrost can be run directly from a checkout of the project by using
 leiningen. The app requires some basic configuration, namely ZooKeeper
-configuration to connect to Kafka and AWS credentials to store
-baldr-files on S3. The project contains an example configuration in
+configuration to connect to Kafka and cloud storage credentials to store
+baldr-files on the chosen cloud storage. The project contains an example configuration in
 `etc/config.edn.example`.
 
      $ lein run -- --config ./etc/config.edn

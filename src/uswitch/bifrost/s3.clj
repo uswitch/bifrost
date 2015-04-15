@@ -114,8 +114,9 @@
              (recur))))))
     rotated-event-ch))
 
-(defn s3-upload-spawner [config]
-  (let [{:keys [credentials bucket consumer-properties uploaders-n]} config
+(defn s3-upload-spawner [{:keys [cloud-storage consumer-properties uploaders-n]}]
+  (let [credentials (:credentials cloud-storage)
+        bucket (:bucket cloud-storage)
         semaphore (observable-chan "semaphore" uploaders-n)]
     (map->Spawner {:key-fn (juxt :partition :topic)
                    :spawn (partial spawn-s3-upload
