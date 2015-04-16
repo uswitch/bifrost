@@ -12,20 +12,22 @@
 
 (def buffer-size 100)
 
-(defn generate-key [consumer-group-id topic partition first-offset]
-  (format "%s/%s/partition=%s/%s.baldr.gz"
+(defn generate-key [consumer-group-id topic partition first-offset last-offset]
+  (format "%s/%s/partition=%s/T%s-%s-%s.baldr.gz"
           consumer-group-id
           topic
           partition
-          (format "%010d" first-offset)))
+          (format "%013d" (System/currentTimeMillis))
+          (format "%010d" first-offset)
+          (format "%010d" last-offset)))
 
 (def caching-rate-gauge (memoize rate-gauge))
 
-(defn upload-to-s3 [credentials bucket consumer-group-id topic partition first-offset file-path]
+(defn upload-to-s3 [credentials bucket consumer-group-id topic partition first-offset last-offset file-path]
   (let [f (file file-path)]
     (if (.exists f)
       (let [g        (caching-rate-gauge (str topic "-" partition "-uploadBytes"))
-            key      (generate-key consumer-group-id topic partition first-offset)
+            key      (generate-key consumer-group-id topic partition first-offset last-offset)
             dest-url (str "s3n://" bucket "/" key)]
         (info "Uploading" file-path "to" dest-url)
         (time! (timer (str topic "-s3-upload-time"))
@@ -54,6 +56,7 @@
                       (upload-to-s3 credentials bucket (consumer-properties "group.id")
                                     topic partition
                                     first-offset
+                                    last-offset
                                     file-path)
                       {:goto :commit}
                       (catch Exception e
