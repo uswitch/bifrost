@@ -6,25 +6,28 @@ Archive Kafka data safely to S3.
 
 bifrost is a daemon that connects to Kafka, consumes all topics and
 persists them to S3 for long term storage and analysis. It uses the
-[baldr file format](https://github.com/uswitch/baldr) to store Kafka
-messages. baldr-files are gzipped before they are written to disk.
+[baldr (default)](https://github.com/uswitch/baldr) or
+[tar](http://en.wikipedia.org/wiki/Tar_%28computing%29) file format to
+store Kafka messages. baldr-files are gzipped before they are written to
+disk.
 
 There are other services for persisting messages from Kafka to S3, such
 as [secor](https://github.com/pinterest/secor) from pinterest. The main
 difference between bifrost and these is, that whereas they rely on the
-Hadoop sequence files for storage, bifrost uses the baldr format. This
-means that consumers of the persisted messages do not need to rely on
-often very large implementations of libraries for reading Hadoop
-sequence files. The baldr file format follows a minimal design that
-allows for easy and quick streaming with a very small code-footprint. It
-does not allow for arbitrary indexing.
+Hadoop sequence files for storage, bifrost uses the baldr or tar
+format. This means that consumers of the persisted messages do not need
+to rely on often very large implementations of libraries for reading
+Hadoop sequence files. The baldr file format follows a minimal design
+that allows for easy and quick streaming with a very small
+code-footprint. It does not allow for arbitrary indexing. The tar file
+format has widespread support on *nix platform systems.
 
 ## Usage
 
 bifrost can be run directly from a checkout of the project by using
 leiningen. The app requires some basic configuration, namely ZooKeeper
-configuration to connect to Kafka and AWS credentials to store
-baldr-files on S3. The project contains an example configuration in
+configuration to connect to Kafka and AWS credentials to store files on
+S3. The project contains an example configuration in
 `etc/config.edn.example`.
 
      $ lein run -- --config ./etc/config.edn
@@ -35,9 +38,9 @@ that on the app server.
     $ lein uberjar
     $ java -jar target/*-standalone.jar --config /opt/uswitch/bifrost/etc/config.edn
 
-The Java temp-dir is used for storing baldr-files locally before
-uploading them. Files are removed upon succesful upload and program
-exit. To change the temp-directory, override `java.io.tmpdir`.
+The Java temp-dir is used for storing files locally before uploading
+them. Files are removed upon succesful upload and program exit. To
+change the temp-directory, override `java.io.tmpdir`.
 
 Logging is done through logback. To configure logback, please set
 `logback.configurationFile`. The logback configuration is only respected

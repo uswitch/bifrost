@@ -28,11 +28,15 @@
 
 (def buffer-size 100)
 
+(def ^:private default-config
+  {:seq-file-format :baldr})
+
 (defn make-system [config]
-  (system-map
-   :metrics-reporter (metrics-reporter config)
+  (let [config (merge default-config config)]
+    (system-map
+     :metrics-reporter (metrics-reporter config)
 
-   :rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
+     :rotated-event-ch (observable-chan "rotated-event-ch" buffer-size)
 
-   :kafka-system (using (kafka-system config) [:rotated-event-ch])
-   :s3-system    (using (s3-system    config) [:rotated-event-ch])))
+     :kafka-system (using (kafka-system config) [:rotated-event-ch])
+     :s3-system    (using (s3-system    config) [:rotated-event-ch]))))

@@ -11,7 +11,12 @@
             [uswitch.bifrost.async :refer (observable-chan)]
             [metrics.meters :refer (meter mark! defmeter)]
             [metrics.counters :refer (defcounter inc!)])
-  (:import [java.util.zip GZIPOutputStream]))
+  (:import [java.util.zip GZIPOutputStream]
+           [java.util Date]
+           [java.io File]
+           [org.apache.commons.compress.archivers.tar
+            TarArchiveOutputStream
+            TarArchiveEntry]))
 
 (defn- get-available-topics
   [zookeeper-connect]
@@ -52,10 +57,29 @@
 
 (defmeter baldr-writes "records")
 
+(defn- tar-writer
+  [out-stream]
+  (let [tar-out-stream (TarArchiveOutputStream. out-stream)]
+    (fn [offset payload]
+      (if payload
+        (let [e (doto (TarArchiveEntry. (File. (File. "/") (str offset)))
+                  (.setSize (alength payload))
+                  (.setModTime (Date. (long (System/currentTimeMillis)))))]
+          (doto tar-out-stream
+            (.putArchiveEntry e)
+            (.write payload)
+            (.closeArchiveEntry)))
+        (.close tar-out-stream)))))
+
+(def write-constructors
+  {:baldr (fn [out-stream] (let [writer (baldr-writer out-stream)]
+                            (fn [offset payload] (writer payload))))
+   :tar   (fn [out-stream] (tar-writer out-stream))})
+
 (defn consume-message
   [{:keys [write topic partition meter first-offset] :as state} message]
   (debug "BaldrConsumer" topic "received" (:offset message))
-  (write (:value message))
+  (write (:offset message) (:value message))
   (mark! meter)
   (mark! baldr-writes)
   (when (not first-offset)
@@ -67,11 +91,13 @@
     :last-offset (:offset message)))
 
 (defn initialise-file
-  [{:keys [topic partition] :as state}]
-  (let [out-file     (doto (java.io.File/createTempFile (str topic "-" partition "-") ".baldr.gz")
+  [{:keys [topic partition seq-file-format] :as state}]
+  (let [out-file     (doto (java.io.File/createTempFile
+                            (str topic "-" partition "-")
+                            (str "." (name seq-file-format) ".gz"))
                        (.deleteOnExit))
         out-stream   (GZIPOutputStream. (output-stream out-file))
-        write        (baldr-writer out-stream)
+        write        ((get write-constructors seq-file-format) out-stream)
         out-path     (.getAbsolutePath out-file)]
     (info "Writing output to" out-path)
     (assoc state
@@ -83,25 +109,27 @@
 
 (defn rotate
   [{:keys [out-stream topic partition out-path rotated-event-ch
-           first-offset last-offset]
+           first-offset last-offset seq-file-format]
     :as state}]
   (if last-offset
     (do
       (when out-stream
         (info "Closing" out-path)
         (.close out-stream)
-        (put! rotated-event-ch {:file-path    out-path
-                                :topic        topic
-                                :partition    partition
-                                :first-offset first-offset
-                                :last-offset  last-offset}))
+        (put! rotated-event-ch {:file-path       out-path
+                                :seq-file-format seq-file-format
+                                :topic           topic
+                                :partition       partition
+                                :first-offset    first-offset
+                                :last-offset     last-offset}))
       (initialise-file state))
     state))
 
 ;; -- end state machines
 
 (defn partition-consumer
-  [topic partition rotation-interval rotated-event-ch]
+  [topic partition rotation-interval
+   rotated-event-ch seq-file-format]
   (info "Starting partition consumer for" topic "-" partition)
   (let [message-ch (observable-chan (str topic "-" partition) buffer-size)]
     (go-loop [state (initialise-file
@@ -109,7 +137,8 @@
                                   :partition         partition
                                   :meter             (meter (str topic "-" partition "-baldrWrite")
                                                             "records")
-                                  :rotated-event-ch  rotated-event-ch}))
+                                  :rotated-event-ch  rotated-event-ch
+                                  :seq-file-format   seq-file-format}))
               timer (timeout rotation-interval)]
              (let [[v c] (alts! [message-ch timer])]
                (if (= c message-ch)
@@ -140,7 +169,8 @@
        (do (<! (timeout (* 15 1000)))
            (recur))))))
 
-(defrecord TopicBaldrConsumer [consumer-properties topic rotation-interval ch]
+(defrecord TopicBaldrConsumer [consumer-properties topic rotation-interval
+                               ch seq-file-format]
   Lifecycle
   (start [this]
     (let [c (<!! (safe-zookeeper-consumer consumer-properties))
@@ -151,7 +181,8 @@
          (if @run?
            (if-let [{:keys [partition] :as msg} (first msgs)]
              (let [message-ch (or (partition->message-ch partition)
-                                  (partition-consumer topic partition rotation-interval ch))]
+                                  (partition-consumer topic partition rotation-interval
+                                                      ch seq-file-format))]
                (>!! message-ch msg)
                (recur (rest msgs)
                       (assoc partition->message-ch partition message-ch)))
@@ -175,8 +206,9 @@
     (clear-keys this :consumer :run?)))
 
 (defn spawn-topic-baldr-consumer
-  [consumer-properties topic rotation-interval ch]
-  (let [consumer (TopicBaldrConsumer. consumer-properties topic rotation-interval ch)]
+  [consumer-properties topic rotation-interval ch seq-file-format]
+  (let [consumer (TopicBaldrConsumer. consumer-properties topic rotation-interval
+                                      ch seq-file-format)]
     (start consumer)))
 
 (defn listen-topics [topic-blacklist topic-whitelist topics]
@@ -185,7 +217,9 @@
                 topics)
               topic-blacklist))
 
-(defrecord ConsumerSpawner [consumer-properties rotation-interval topic-blacklist topic-whitelist
+(defrecord ConsumerSpawner [consumer-properties rotation-interval
+                            topic-blacklist topic-whitelist
+                            seq-file-format
                             topic-added-ch rotated-event-ch]
   Lifecycle
   (start [this]
@@ -195,7 +229,13 @@
         (if-let [new-topics (<! topic-added-ch)]
           (do (doseq [topic (listen-topics topic-blacklist topic-whitelist new-topics)]
                 (info "Spawning consumer for" topic)
-                (swap! consumers conj (spawn-topic-baldr-consumer consumer-properties topic rotation-interval rotated-event-ch)))
+                (swap!
+                 consumers conj
+                 (spawn-topic-baldr-consumer
+                  consumer-properties
+                  topic
+                  rotation-interval rotated-event-ch
+                  seq-file-format)))
               (recur))
           (info "Closing down ConsumerSpawner")))
       (info "ConsumerSpawner started")
@@ -211,7 +251,9 @@
 (defn consumer-spawner
   [config]
   (map->ConsumerSpawner
-   (select-keys config [:consumer-properties :rotation-interval :topic-blacklist :topic-whitelist])))
+   (select-keys config [:consumer-properties :rotation-interval
+                        :topic-blacklist :topic-whitelist
+                        :seq-file-format])))
 
 (defn kafka-system
   [config]
