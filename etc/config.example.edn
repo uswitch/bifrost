@@ -14,4 +14,5 @@
  :uploaders-n         4 ; max-number of concurrent threads uploading to S3
  :bucket              "my-bifrost-bucket"
  :riemann-host        nil ; if :riemann-host is set, metrics will be pushed to that host
+ :seq-file-format     :tar ; available sequence file formats are :baldr and :tar
  }

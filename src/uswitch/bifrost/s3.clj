@@ -12,20 +12,24 @@
 
 (def buffer-size 100)
 
-(defn generate-key [consumer-group-id topic partition first-offset]
-  (format "%s/%s/partition=%s/%s.baldr.gz"
+(defn generate-key [consumer-group-id topic partition first-offset seq-file-format]
+  (format "%s/%s/partition=%s/%s.%s.gz"
           consumer-group-id
           topic
           partition
-          (format "%010d" first-offset)))
+          (format "%010d" first-offset)
+          (name seq-file-format)))
 
 (def caching-rate-gauge (memoize rate-gauge))
 
-(defn upload-to-s3 [credentials bucket consumer-group-id topic partition first-offset file-path]
+(defn upload-to-s3 [credentials bucket
+                    consumer-group-id topic partition first-offset
+                    file-path seq-file-format]
   (let [f (file file-path)]
     (if (.exists f)
       (let [g        (caching-rate-gauge (str topic "-" partition "-uploadBytes"))
-            key      (generate-key consumer-group-id topic partition first-offset)
+            key      (generate-key consumer-group-id topic partition first-offset
+                                   seq-file-format)
             dest-url (str "s3n://" bucket "/" key)]
         (info "Uploading" file-path "to" dest-url)
         (time! (timer (str topic "-s3-upload-time"))
@@ -43,7 +47,8 @@
    credentials bucket consumer-properties
    topic partition
    first-offset last-offset
-   file-path]
+   file-path
+   seq-file-format]
   (debug "Asked to step" {:state state :file-path file-path})
   (case state
     nil          {:goto :upload-file}
@@ -54,7 +59,8 @@
                       (upload-to-s3 credentials bucket (consumer-properties "group.id")
                                     topic partition
                                     first-offset
-                                    file-path)
+                                    file-path
+                                    seq-file-format)
                       {:goto :commit}
                       (catch Exception e
                         (error e "Error whilst uploading to S3. Retrying in 15s.")
@@ -95,7 +101,8 @@
 
            (debug "Terminating S3 uploader")
 
-           (let [{:keys [topic partition file-path first-offset last-offset]} msg]
+           (let [{:keys [topic partition first-offset last-offset
+                         file-path seq-file-format]} msg]
              (debug "Attempting to acquire semaphore to begin upload" {:file-path file-path})
              (>!! semaphore :token)
              (info "Starting S3 upload of" file-path)
@@ -104,7 +111,7 @@
                                                               credentials bucket consumer-properties
                                                               topic partition
                                                               first-offset last-offset
-                                                              file-path)]
+                                                              file-path seq-file-format)]
                  (<!! (timeout (or pause 0)))
                  (if (= :done goto)
                    (info "Terminating stepping S3 upload machine.")

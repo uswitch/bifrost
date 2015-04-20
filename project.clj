@@ -12,6 +12,7 @@
                  [clj-kafka "0.2.6-0.8" :exclusions [org.slf4j/slf4j-simple]]
                  [riemann-clojure-client "0.2.9"]
                  [baldr "0.1.1"]
+                 [org.apache.commons/commons-compress "1.9"]
                  [org.pingles/clj-aws-s3 "0.3.10"]
                  [metrics-clojure "1.0.1"]
                  [org.xerial.snappy/snappy-java "1.1.0.1"]
