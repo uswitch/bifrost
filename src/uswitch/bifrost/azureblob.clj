@@ -10,14 +10,12 @@
            [com.microsoft.windowsazure.services.blob.client CloudBlobClient CloudBlobContainer CloudBlockBlob BlobRequestOptions]
            [java.io FileInputStream]))
 
-(defn generate-blob-name [consumer-group-id topic partition first-offset last-offset]
-  (format "%s/%s/partition=%s/T%s-%s-%s.baldr.gz"
+(defn generate-blob-name [consumer-group-id topic partition first-offset]
+  (format "%s/%s/partition=%s/%s.baldr.gz"
           consumer-group-id
           topic
           partition
-          (format "%013d" (System/currentTimeMillis))
-          (format "%010d" first-offset)
-          (format "%010d" last-offset)))
+          (format "%010d" first-offset)))
 
 (defn- ensure-container-exists
   [{:keys [account-name account-key storage-container endpoint-protocol] :as azurestorage-credentials
@@ -64,7 +62,7 @@
                                                              :first-offset first-offset
                                                              :last-offset last-offset})
                     (let [consumer-group-id (consumer-properties "group.id")
-                          blob-name (generate-blob-name consumer-group-id topic partition first-offset last-offset)]
+                          blob-name (generate-blob-name consumer-group-id topic partition first-offset)]
                       (upload-to-azure blob-container topic blob-name file-path))
                     {:goto :commit}
                     (catch Exception e
