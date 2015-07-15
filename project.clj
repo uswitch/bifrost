@@ -16,6 +16,7 @@
                  [metrics-clojure "1.0.1"]
                  [org.xerial.snappy/snappy-java "1.1.0.1"]
                  [org.clojure/tools.cli "0.3.1"]
+                 [com.microsoft.windowsazure/microsoft-windowsazure-api "0.4.6"]
 
                  ;; logging hell
                  [org.slf4j/slf4j-api "1.6.4"]

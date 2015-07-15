@@ -8,10 +8,29 @@
                           ; from the whitelist will be backed up. The
                           ; value should be a set of strings.
  :rotation-interval   60000 ; milliseconds
- :credentials         {:access-key ""
-                       :secret-key ""
-                       :endpoint "s3-eu-west-1.amazonaws.com"}
  :uploaders-n         4 ; max-number of concurrent threads uploading to S3
- :bucket              "my-bifrost-bucket"
  :riemann-host        nil ; if :riemann-host is set, metrics will be pushed to that host
+
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ ; Cloud configuration format for s3 storage
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ ; :cloud-storage {:type :s3-storage
+ ;                 :credentials {:access-key ""
+ ;                               :secret-key ""
+ ;                               :endpoint "s3-eu-west-1.amazonaws.com"}
+ ;                 :bucket "my-bifrost-bucket"}
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ ; Cloud configuration format for azure blobstorage
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ ; :cloud-storage {:type :azure-storage
+ ;                 :credentials {:account-name ""
+ ;                               :account-key ""
+ ;                               :storage-container "my-bifrost-container"}}
+
+ :cloud-storage       {:type :s3-storage
+                       :credentials {:access-key ""
+                                     :secret-key ""
+                                     :endpoint "s3-eu-west-1.amazonaws.com"}
+                       :bucket "my-bifrost-bucket"}
+
  }
