@@ -1,24 +1,33 @@
 (ns uswitch.bifrost.s3
-  (:require [com.stuartsierra.component :refer (Lifecycle system-map using start stop)]
-            [clojure.tools.logging :refer (info warn error debug)]
-            [clojure.core.async :refer (<! >! go-loop thread chan close! alts! timeout >!! <!!)]
-            [clojure.java.io :refer (file)]
-            [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
-            [metrics.timers :refer (time! timer)]
+  (:require [aws.sdk.s3 :refer (put-object bucket-exists? create-bucket)]
             [clj-kafka.zk :refer (committed-offset set-offset!)]
-            [uswitch.bifrost.util :refer (close-channels)]
+            [clj-time.core :refer (now)]
+            [clj-time.format :as tf]
+            [clojure.core.async :refer [<!! >!! thread timeout]]
+            [clojure.java.io :refer (file)]
+            [clojure.string :as str]
+            [clojure.tools.logging :refer (info warn error debug)]
+            [com.stuartsierra.component :refer (Lifecycle system-map using start stop)]
+            [metrics.timers :refer (time! timer)]
             [uswitch.bifrost.async :refer (observable-chan map->Spawner)]
             [uswitch.bifrost.telemetry :refer (rate-gauge reset-gauge! stop-gauge! update-gauge!)]
-            [clj-time.core :refer (now)]
-            [clj-time.format :as tf]))
+            [uswitch.bifrost.util :refer (close-channels)]))
 
 (def buffer-size 100)
 (def key-date-formatter (tf/formatters :basic-date))
 
+(defn generate-topic-key [topic]
+  (str/replace 
+   (if-let [[name idx] (next (re-matches #"(\w+?)(\d+)" topic))]
+     (format "%s/%02d" name (Integer/valueOf idx))
+     topic)
+   #"_"
+   "/" ))
+
 (defn generate-key [topic partition first-offset]
-  (format "%s/%s/partition%02d/%s.baldr.gz"
+  (format "%s/%s/%02d/%s.baldr.gz"
           (tf/unparse key-date-formatter (now))
-          topic
+          (generate-topic-key topic)
           partition
           (format "%010d" first-offset)))
 
