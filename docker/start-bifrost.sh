@@ -7,11 +7,27 @@ CONFIG_FILE="/bifrost-config.edn"
 
 # This isn't exhaustive, but works for now.
 # SEE http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+
+
 if [ -n "$AWS_DEFAULT_REGION" ] ; then
     AWS_S3_ENDPOINT="s3-${AWS_DEFAULT_REGION}.amazonaws.com"
 else
     AWS_S3_ENDPOINT="s3.amazonaws.com"
 fi
+
+
+case "${AWS_DEFAULT_REGION}" in
+    us-east-1)      AWS_S3_ENDPOINT="s3.amazonaws.com" ;;
+    us-west-1)      AWS_S3_ENDPOINT="s3-eu-west-1.amazonaws.com" ;;
+    us-west-2)      AWS_S3_ENDPOINT="s3-eu-west-2.amazonaws.com" ;;
+    eu-west-1)      AWS_S3_ENDPOINT="s3-eu-west-1.amazonaws.com" ;;
+    eu-central-1)   AWS_S3_ENDPOINT="s3.eu-central-1.amazonaws.com" ;;
+    ap-southeast-1) AWS_S3_ENDPOINT="s3-ap-southeast-1.amazonaws.com" ;;
+    ap-southeast-2) AWS_S3_ENDPOINT="s3-ap-southeast-2.amazonaws.com" ;;
+    ap-northeast-1) AWS_S3_ENDPOINT="s3-ap-northeast-1.amazonaws.com" ;;
+    sa-east-1)      AWS_S3_ENDPOINT="s3-sa-east-1.amazonaws.com" ;;
+    *)              echo "Unknown AWS region"; exit 1 ;;
+esac
 
 BUCKET=${BIFROST_BUCKET?NOT DEFINED}
 
@@ -22,7 +38,7 @@ echo "ZK_CHROOT is ${ZK_CHROOT}"
 
 #Add entries for zookeeper peers.
 hosts=()
-for i in $(seq 255)
+for i in {1..255}
 do
     zk_name=$(printf "ZK%02d" ${i})
     zk_addr_name="${zk_name}_PORT_2181_TCP_ADDR"
@@ -34,6 +50,15 @@ done
 ZK_CONNECT="$(join , ${hosts[@]})${ZK_CHROOT}"
 
 FETCH_MESSAGE_MAX_BYTES=${BIFROST_CONSUMER_FETCH_SIZE:-$(( 16 * 1024 * 1024 ))} # default 16 Mb
+
+topics=()
+for t in {1..255}
+do
+    topic_name=$(printf "TOPIC%02d" ${t})
+    [ ! -z "${!topic_name}" ] && topics+=("\"${!topic_name}\"")
+done
+
+TOPICS="#{${topics[@]}}"
 
 function bytes_for_humans {
     local -i bytes=$1;
@@ -49,6 +74,7 @@ echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
 echo "FETCH_MESSAGE_MAX_BYTES is ${FETCH_MESSAGE_MAX_BYTES} [$(bytes_for_humans ${FETCH_MESSAGE_MAX_BYTES})]"
 echo "BIFROST_BUCKET is ${BUCKET}"
+echo "TOPICS is ${TOPICS}"
 
 cat <<EOF > ${CONFIG_FILE}
 {:consumer-properties {"zookeeper.connect"       "${ZK_CONNECT}"
@@ -58,7 +84,7 @@ cat <<EOF > ${CONFIG_FILE}
                        "fetch.message.max.bytes" "${FETCH_MESSAGE_MAX_BYTES}"
                        "auto.commit.enable"      "false"}
  :topic-blacklist     nil
- :topic-whitelist     #{"${TOPIC:-events}"}
+ :topic-whitelist     ${TOPICS}
  :rotation-interval   60000 ; milliseconds
  :credentials         {:access-key "${AWS_ACCESS_KEY_ID:?NOT_DEFINED}"
                        :secret-key "${AWS_SECRET_ACCESS_KEY:?NOT_DEFINED}"
