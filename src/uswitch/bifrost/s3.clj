@@ -16,20 +16,20 @@
 (def buffer-size 100)
 (def key-date-formatter (tf/formatters :basic-date))
 
-(defn generate-topic-key [topic]
-  (str/replace 
-   (if-let [[name idx] (next (re-matches #"(\w+?)(\d+)" topic))]
-     (format "%s/%02d" name (Integer/valueOf idx))
-     topic)
-   #"_"
-   "/" ))
+(defn generate-key-parts [topic partition]
+  (let [[topic-base idx] (next (re-matches #"(\w+?)(\d+)" topic))]
+    (vector
+     (str/replace topic-base #"_" "/")
+     (format "%02d/%02d" (Integer/valueOf idx) (Integer/valueOf idx)))))
 
 (defn generate-key [topic partition first-offset]
-  (format "%s/%s/%02d/%s.baldr.gz"
-          (tf/unparse key-date-formatter (now))
-          (generate-topic-key topic)
-          partition
-          (format "%010d" first-offset)))
+  (let [[prefix suffix] (generate-key-parts topic partition)
+        date-str (tf/unparse key-date-formatter (now))]
+    (format "%s/%s/%s/%s.baldr.gz"
+            prefix
+            date-str
+            suffix
+            (format "%010d" first-offset))))
 
 (def caching-rate-gauge (memoize rate-gauge))
 
