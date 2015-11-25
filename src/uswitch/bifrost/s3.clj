@@ -29,7 +29,7 @@
             prefix
             date-str
             suffix
-            (format "%010d" first-offset))))
+            (format "%s-%010d" date-str first-offset))))
 
 (def caching-rate-gauge (memoize rate-gauge))
 
