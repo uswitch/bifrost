@@ -22,14 +22,16 @@
      (str/replace topic-base #"_" "/")
      (format "%02d/%02d" (Integer/valueOf idx) (Integer/valueOf idx)))))
 
-(defn generate-key [topic partition first-offset]
+(defn generate-key [topic partition file-path]
   (let [[prefix suffix] (generate-key-parts topic partition)
-        date-str (tf/unparse key-date-formatter (now))]
-    (format "%s/%s/%s/%s.baldr.gz"
+        date-str (tf/unparse key-date-formatter (now))
+        [file-name] (next (re-matches #".*/(.*)" file-path))]
+    
+    (format "%s/%s/%s/%s"
             prefix
             date-str
             suffix
-            (format "%s-%010d" date-str first-offset))))
+            file-name)))
 
 (def caching-rate-gauge (memoize rate-gauge))
 
@@ -37,7 +39,7 @@
   (let [f (file file-path)]
     (if (.exists f)
       (let [g        (caching-rate-gauge (str topic "-" partition "-uploadBytes"))
-            key      (generate-key topic partition first-offset)
+            key      (generate-key topic partition file-path)
             dest-url (str "s3n://" bucket "/" key)]
         (info "Uploading" file-path "to" dest-url)
         (time! (timer (str topic "-s3-upload-time"))
