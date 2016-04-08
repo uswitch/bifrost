@@ -69,11 +69,14 @@ function bytes_for_humans {
     fi
 }
 
+ROTATION_INTERVAL=${BIFROST_ROTATION_INTERVAL:-60000} # default 60s
+
 echo "Zookeeper connect string is ${ZK_CONNECT}"
 echo "DATA_DIR is ${DATA_DIR}"
 echo "AWS S3 endpoint is ${AWS_S3_ENDPOINT}"
 echo "FETCH_MESSAGE_MAX_BYTES is ${FETCH_MESSAGE_MAX_BYTES} [$(bytes_for_humans ${FETCH_MESSAGE_MAX_BYTES})]"
 echo "BIFROST_BUCKET is ${BUCKET}"
+echo "BIFROST_ROTATION_INTERVAL is ${ROTATION_INTERVAL}"
 echo "TOPICS is ${TOPICS}"
 
 cat <<EOF > ${CONFIG_FILE}
@@ -85,7 +88,7 @@ cat <<EOF > ${CONFIG_FILE}
                        "auto.commit.enable"      "false"}
  :topic-blacklist     nil
  :topic-whitelist     ${TOPICS}
- :rotation-interval   60000 ; milliseconds
+ :rotation-interval   ${ROTATION_INTERVAL}
  :credentials         {:access-key "${AWS_ACCESS_KEY_ID:?NOT_DEFINED}"
                        :secret-key "${AWS_SECRET_ACCESS_KEY:?NOT_DEFINED}"
                        :endpoint "${AWS_S3_ENDPOINT}"}
