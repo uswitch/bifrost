@@ -34,7 +34,7 @@
     <appender-ref ref="FILE" />
   </root>
 
-  <logger name="com.amazonaws" level="DEBUG" />
+  <logger name="com.amazonaws" level="INFO" />
   <logger name="org.apache" level="INFO" />
   <logger name="kafka" level="INFO" />
 
