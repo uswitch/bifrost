@@ -7,14 +7,11 @@ CONFIG_FILE="/bifrost-config.edn"
 
 # This isn't exhaustive, but works for now.
 # SEE http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
-
-
 if [ -n "$AWS_DEFAULT_REGION" ] ; then
     AWS_S3_ENDPOINT="s3-${AWS_DEFAULT_REGION}.amazonaws.com"
 else
     AWS_S3_ENDPOINT="s3.amazonaws.com"
 fi
-
 
 case "${AWS_DEFAULT_REGION}" in
     us-east-1)      AWS_S3_ENDPOINT="s3.amazonaws.com" ;;
@@ -33,32 +30,38 @@ BUCKET=${BIFROST_BUCKET?NOT DEFINED}
 
 function join { local IFS="$1"; shift; echo "$*"; }
 
-ZK_CHROOT=${ZK_CHROOT:-/}
-echo "ZK_CHROOT is ${ZK_CHROOT}"
+if [ -z "${ZK_CONNECT}" ] ; then
+    ZK_CHROOT=${ZK_CHROOT:-/}
+    echo "ZK_CHROOT is ${ZK_CHROOT}"
 
-#Add entries for zookeeper peers.
-hosts=()
-for i in {1..255}
-do
-    zk_name=$(printf "ZK%02d" ${i})
-    zk_addr_name="${zk_name}_PORT_2181_TCP_ADDR"
-    zk_port_name="${zk_name}_PORT_2181_TCP_PORT"
+    #Add entries for zookeeper peers.
+    hosts=()
+    for i in {1..255}
+    do
+        zk_name=$(printf "ZK%02d" ${i})
+        zk_addr_name="${zk_name}_PORT_2181_TCP_ADDR"
+        zk_port_name="${zk_name}_PORT_2181_TCP_PORT"
 
-    [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}")
-done
+        [ ! -z "${!zk_addr_name}" ] && hosts+=("${!zk_addr_name}:${!zk_port_name}")
+    done
 
-ZK_CONNECT="$(join , ${hosts[@]})${ZK_CHROOT}"
+    ZK_CONNECT="$(join , ${hosts[@]})${ZK_CHROOT}"
+
+fi
 
 FETCH_MESSAGE_MAX_BYTES=${BIFROST_CONSUMER_FETCH_SIZE:-$(( 16 * 1024 * 1024 ))} # default 16 Mb
 
-topics=()
-for t in {1..255}
-do
-    topic_name=$(printf "TOPIC%02d" ${t})
-    [ ! -z "${!topic_name}" ] && topics+=("\"${!topic_name}\"")
-done
+if [ -z "${TOPICS}" ] ; then
+    topics=()
+    for t in {1..255}
+    do
+        topic_name=$(printf "TOPIC%02d" ${t})
+        [ ! -z "${!topic_name}" ] && topics+=("\"${!topic_name}\"")
+    done
 
-TOPICS="#{${topics[@]}}"
+    TOPICS="#{${topics[@]}}"
+
+fi
 
 function bytes_for_humans {
     local -i bytes=$1;
