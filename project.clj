@@ -1,5 +1,7 @@
 (def base-version (clojure.string/trim-newline (slurp "./resources/VERSION")))
 
+(spit "./resources/BUILD_NUMBER" (or (System/getenv "BUILD_NUMBER") "-1"))
+
 (defproject bifrost base-version
   :description "Archive Kafka messages to Amazon S3"
   :url "http://github.com/uswitch/bifrost"
