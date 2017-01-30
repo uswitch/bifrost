@@ -101,4 +101,4 @@ cat <<EOF > ${CONFIG_FILE}
  }
 EOF
 
-java -jar -Djava.io.tmpdir=${DATA_DIR} /uberjar.jar --config ${CONFIG_FILE}
+java -XX:ErrorFile=bifrost.error.log -Xmx1792m -XX:+HeapDumpOnOutOfMemoryError -jar -Djava.io.tmpdir=${DATA_DIR} /uberjar.jar --config ${CONFIG_FILE}
