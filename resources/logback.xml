@@ -1,0 +1,45 @@
+<!-- Logback configuration. See http://logback.qos.ch/manual/index.html -->
+<configuration scan="true" scanPeriod="10 seconds">
+
+  <!-- Simple file output -->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- encoder defaults to ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %X{pipejine.q} %logger{36} - %msg%n</pattern>
+    </encoder>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- rollover daily -->
+      <fileNamePattern>/logs/bifrost/bifrost-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <timeBasedFileNamingAndTriggeringPolicy
+          class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <!-- or whenever the file size reaches 64 MB -->
+        <maxFileSize>64 MB</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+    </rollingPolicy>
+
+    <!-- Safely log to the same file from multiple JVMs. Degrades performance! -->
+    <prudent>true</prudent>
+  </appender>
+
+   <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+      <remoteHost>${LOGSTASH01_PORT_4560_TCP_ADDR}</remoteHost>
+      <port>${LOGSTASH01_PORT_4560_TCP_PORT}</port>
+
+      <!-- encoder is required -->
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+  </appender>
+  <root level="DEBUG">
+    <appender-ref ref="LOGSTASH" />
+    <appender-ref ref="FILE" />
+  </root>
+
+  <logger name="org.apache.zookeeper.ClientCnxn" level="WARN" />
+  <logger name="com.amazonaws" level="INFO" />
+  <logger name="org.apache" level="INFO" />
+  <logger name="kafka" level="INFO" />
+
+  <logger name="uswitch" level="INFO" />
+  <logger name="uswitch.bifrost.kafka" level="INFO" />
+
+</configuration>
