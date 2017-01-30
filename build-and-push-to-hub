@@ -11,11 +11,12 @@ function assert_git_is_clean() {
 
 assert_git_is_clean
 
-lein do clean, uberimage
+lein do clean, uberjar
 
 IMAGE_NAME=mastodonc/kixi.bifrost
 TAG=git-$(git rev-parse --short=12 HEAD)
 
+docker build -t ${IMAGE_NAME} .
 docker tag -f ${IMAGE_NAME} ${IMAGE_NAME}:latest
 docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
 docker push ${IMAGE_NAME}
