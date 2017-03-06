@@ -28,7 +28,7 @@
     reporter))
 
 (defn statsd-reporter [host]
-  (StatsDReporter. (Metrics/defaultRegistry) host 8125 "blueshift"))
+  (StatsDReporter. (Metrics/defaultRegistry) host 8125 "bifrost"))
 
 (defrecord MetricsReporter [riemann-host statsd-host]
   Lifecycle
