@@ -19,11 +19,13 @@
                  [org.xerial.snappy/snappy-java "1.1.0.1"]
                  [org.clojure/tools.cli "0.3.1"]
                  [com.microsoft.windowsazure/microsoft-windowsazure-api "0.4.6"]
+                 [com.readytalk/metrics2-statsd "4.1.2" :exclusions [org.slf4j/slf4j-api]]
 
                  ;; logging hell
                  [org.slf4j/slf4j-api "1.6.4"]
                  [org.slf4j/log4j-over-slf4j "1.6.4"]]
   :main uswitch.bifrost.main
+  :repositories [["statsd-bintray" "https://dl.bintray.com/readytalk/maven/"]]
   :profiles {:uberjar {:dependencies [[ch.qos.logback/logback-classic "1.1.2"]]
                        :aot          [uswitch.bifrost.main]}
              :dev {:source-paths ["dev"]
