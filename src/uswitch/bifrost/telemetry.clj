@@ -36,7 +36,7 @@
     (try
       (let [reporter (cond (not (nil? riemann-host)) (riemann-reporter riemann-host)
                            :default                  (statsd-reporter (or statsd-host "localhost")))]
-        (.start reporter 1 TimeUnit/SECONDS)
+        (.start reporter 10 TimeUnit/SECONDS)
         (info "MetricsReporter started")
         (assoc this :reporter reporter))
       (catch Exception e
