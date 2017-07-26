@@ -27,15 +27,16 @@
     (info "Connected to Riemann")
     reporter))
 
-(defn statsd-reporter [host]
-  (StatsDReporter. (Metrics/defaultRegistry) host 8125 "bifrost"))
+(defn statsd-reporter [host port]
+  (StatsDReporter. (Metrics/defaultRegistry) host (Integer/valueOf port) "bifrost"))
 
 (defrecord MetricsReporter [riemann-host statsd-host]
   Lifecycle
   (start [this]
     (try
       (let [reporter (cond (not (nil? riemann-host)) (riemann-reporter riemann-host)
-                           :default                  (statsd-reporter (or statsd-host "localhost")))]
+                           :default                  (statsd-reporter (or (System/getenv "STATSD_HOST") statsd-host "localhost")
+                                                                      (or (System/getenv "STATSD_PORT") 8125)))]
         (.start reporter 10 TimeUnit/SECONDS)
         (info "MetricsReporter started")
         (assoc this :reporter reporter))
