@@ -36,7 +36,7 @@ that on the app server.
     $ java -jar target/*-standalone.jar --config /opt/uswitch/bifrost/etc/config.edn
 
 The Java temp-dir is used for storing baldr-files locally before
-uploading them. Files are removed upon succesful upload and program
+uploading them. Files are removed upon successful upload and program
 exit. To change the temp-directory, override `java.io.tmpdir`.
 
 Logging is done through logback. To configure logback, please set
